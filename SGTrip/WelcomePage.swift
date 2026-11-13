@@ -33,18 +33,26 @@ struct WelcomePage: View {
     )
 
     var body: some View {
-        GeometryReader { proxy in
-            VStack(spacing: 0) {
-                Map(position: $position, bounds: singaporeBounds) {
-                    Marker("Haw Par Villa", systemImage: "building", coordinate: tower)
+        TabView{
+            VStack{
+                Text("SGTrip")
+                    .font(.largeTitle)
+                    .bold()
+                
+                GeometryReader { proxy in
+                    VStack(spacing: 0) {
+                        Map(position: $position, bounds: singaporeBounds) {
+                            Marker("Haw Par Villa", systemImage: "building", coordinate: tower)
+                        }
+                        // Only take up half of the screen height.
+                        .frame(height: proxy.size.height * 0.5)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        
+                        Spacer(minLength: 0)
+                    }
                 }
-                // Only take up half of the screen height.
-                .frame(height: proxy.size.height * 0.5)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                Spacer(minLength: 0)
             }
-        }
+        } 
     }
 }
 
