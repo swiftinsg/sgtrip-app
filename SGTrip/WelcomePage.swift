@@ -10,13 +10,13 @@ import MapKit
 
 struct WelcomePage: View {
     let tower = CLLocationCoordinate2D(latitude: 1.284539, longitude: 103.782493)
-
+    
     // Rough bounding box around Singapore, so the map can't pan away from it.
     private let singaporeRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
         span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.35)
     )
-
+    
     private var singaporeBounds: MapCameraBounds {
         MapCameraBounds(
             centerCoordinateBounds: singaporeRegion,
@@ -24,14 +24,14 @@ struct WelcomePage: View {
             maximumDistance: 30000
         )
     }
-
+    
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
             span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.35)
         )
     )
-
+    
     var body: some View {
         TabView{
             VStack{
@@ -52,7 +52,8 @@ struct WelcomePage: View {
                     }
                 }
             }
-        } 
+            Text("hi")
+        }
     }
 }
 
