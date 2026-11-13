@@ -1,5 +1,5 @@
 // WORK IN PROGRESS
-//EZRA + SHIVIKA
+// EZRA + SHIVIKA
 import SwiftUI
 import MapKit
 
@@ -12,7 +12,6 @@ struct Place: Identifiable, Hashable {
     let photoPrompt: String
     let coordinate: CLLocationCoordinate2D
     
-    // Required for Hashable/Identifiable sheet binding
     static func == (lhs: Place, rhs: Place) -> Bool {
         lhs.id == rhs.id
     }
@@ -21,9 +20,8 @@ struct Place: Identifiable, Hashable {
     }
 }
 
-// 2. Main Map View (Screen 1)
-struct MapTabView: View {
-    // Sample Singapore Places
+// 2. Main Map View (Screen 1 - named RecommendationTab for your TabView)
+struct RecommendationTab: View {
     let places: [Place] = [
         Place(
             name: "Chinatown Food Street",
@@ -62,10 +60,8 @@ struct MapTabView: View {
         )
     ]
     
-    // Tracks which marker was tapped to open the second screen
     @State private var selectedPlace: Place?
     
-    // Camera centered over Singapore
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
@@ -81,18 +77,15 @@ struct MapTabView: View {
                         Button {
                             selectedPlace = place
                         } label: {
-                            VStack(spacing: 2) {
-                                Image(systemName: "mappin.circle.fill")
-                                    .font(.title)
-                                    .foregroundStyle(.red)
-                                    .background(Color.white.clipShape(Circle()))
-                            }
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(.red)
+                                .background(Color.white.clipShape(Circle()))
                         }
                     }
                 }
             }
             .navigationTitle("SG Trip")
-            // Opens Screen 2 whenever a marker is tapped
             .sheet(item: $selectedPlace) { place in
                 LocationDetailView(place: place)
             }
@@ -100,7 +93,7 @@ struct MapTabView: View {
     }
 }
 
-// 3. Detail Sheet View (Screen 2 from your sketch)
+// 3. Detail Sheet View (Screen 2)
 struct LocationDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let place: Place
@@ -109,7 +102,6 @@ struct LocationDetailView: View {
     
     init(place: Place) {
         self.place = place
-        // Zooms the top mini-map closely onto the selected place
         _detailCamera = State(initialValue: .region(
             MKCoordinateRegion(
                 center: place.coordinate,
@@ -120,7 +112,6 @@ struct LocationDetailView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // Top Close "X" Button
             HStack {
                 Spacer()
                 Button {
@@ -135,20 +126,17 @@ struct LocationDetailView: View {
                 }
             }
             
-            // Top Mini-Map Preview showing the exact pin
             Map(position: $detailCamera) {
                 Marker(place.name, coordinate: place.coordinate)
             }
             .frame(height: 180)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             
-            // Info (Category) & Location VStack
             VStack(alignment: .leading, spacing: 8) {
                 Text(place.name)
                     .font(.title2)
                     .bold()
                 
-                // Category Badge (Chinese, Indian, Thai, etc.)
                 Text("Type: \(place.infoType)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -158,7 +146,6 @@ struct LocationDetailView: View {
                     .foregroundStyle(.blue)
                     .clipShape(Capsule())
                 
-                // Location Address
                 HStack(spacing: 4) {
                     Image(systemName: "location.fill")
                         .foregroundStyle(.secondary)
@@ -170,7 +157,6 @@ struct LocationDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Take Photo Prompt & Camera Button
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Take Photo Prompt")
@@ -204,14 +190,6 @@ struct LocationDetailView: View {
         .padding()
     }
 }
-
-#Preview {
-    MapTabView()
-}
-
-        }
-}
-
 
 #Preview {
     RecommendationTab()
