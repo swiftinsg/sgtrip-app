@@ -11,7 +11,7 @@ struct ContentView: View {
                 .font(.largeTitle.bold())
 
             Text("Hello, Singapore!")
-                .font(.title3)
+                .font(.title)
                 .foregroundStyle(.secondary)
         }
         .padding()
