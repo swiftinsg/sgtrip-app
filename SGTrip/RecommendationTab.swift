@@ -237,3 +237,12 @@ struct LocationDetailView: View {
     RecommendationTab(selectedTab: .constant(.places))
 }
 
+struct RecommendationTab: View {
+var body: some View {
+    }
+}
+struct RecommendationTab_Previews: PreviewProvider {
+    static var previews: some View {
+        RecommendationTab()
+    }
+}
