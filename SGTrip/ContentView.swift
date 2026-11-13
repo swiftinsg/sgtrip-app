@@ -9,7 +9,7 @@ struct ContentView: View {
                 .font(.largeTitle.bold())
 
             Text("Hello, Singapore!")
-                .font(.title2)
+                .font(.title)
                 .foregroundStyle(.secondary)
         }
         .padding()
