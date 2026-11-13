@@ -1,9 +1,7 @@
 import SwiftUI
 
-// Top-level tabs in the app, used to programmatically switch tabs.
 enum AppTab: Hashable {
     case home
-    case places
     case memories
 }
 
@@ -12,27 +10,19 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            WelcomePage()
-                .tabItem {
-                    Label("Welcome", systemImage: "house")
-                }
-                .tag(AppTab.home)
+            Tab("Home", systemImage: "house", value: .home) {
+                RecommendationTab()
+            }
 
-            RecommendationTab(selectedTab: $selectedTab)
-                .tabItem {
-                    Label("Places", systemImage: "map")
-                }
-                .tag(AppTab.places)
-
-            MemoriesTab()
-                .tabItem {
-                    Label("Memories", systemImage: "photo.on.rectangle")
-                }
-                .tag(AppTab.memories)
+            Tab("Memories", systemImage: "photo.on.rectangle", value: .memories) {
+                MemoriesTab()
+            }
         }
     }
 }
 
 #Preview {
     ContentView()
+        .environment(TripStore())
 }
+
