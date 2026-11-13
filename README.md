@@ -10,8 +10,8 @@ A SwiftUI iPhone app built with Swift Innovators Network.
 4. Start building in `SGTrip/ContentView.swift`.
 
 ```bash
-git clone https://github.com/swiftinsg/sgtrip.git
-cd sgtrip
+git clone https://github.com/swiftinsg/sgtrip-app.git
+cd sgtrip-app
 ```
 
 ## Layout
