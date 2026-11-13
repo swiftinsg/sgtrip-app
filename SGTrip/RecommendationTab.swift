@@ -1,17 +1,15 @@
 // WORK IN PROGRESS
 //EZRA + SHIVIKA
-
+import SwiftUI
 import MapKit
 
 struct RecommendationTab: View {
-    
-    print("Work IN progress")
-        .font (.bold)
-        . padding
-    
-    
-    
-    
+    var body: some View {
+        Text("Work IN progress")
+            .bold()
+            . padding()
+        
+        }
 }
 
 
