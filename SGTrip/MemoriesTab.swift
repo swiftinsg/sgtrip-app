@@ -2,21 +2,19 @@ import SwiftUI
 
 struct MemoriesTab: View {
     var body: some View {
-        VStack {
-            Text("Memories")
+        VStack(spacing: 16) {
+            Image(systemName: "photo.on.rectangle")
                 .font(.largeTitle)
-                .bold()
-            Text("Your travel memories here")
                 .foregroundStyle(.secondary)
-            Spacer()
+
+            Text("No memories yet")
+                .font(.title3)
+                .foregroundStyle(.secondary)
         }
         .padding()
-        .background(Color(.systemBackground).opacity(0.8))
     }
 }
 
-struct MemoriesTab_Previews: PreviewProvider {
-    static var previews: some View {
-        MemoriesTab()
-    }
+#Preview {
+    MemoriesTab()
 }

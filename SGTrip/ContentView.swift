@@ -1,22 +1,28 @@
 import SwiftUI
-import MapKit
+
+enum AppTab: Hashable {
+    case home
+    case memories
+}
 
 struct ContentView: View {
-    let tower = CLLocationCoordinate2D(latitude: 1.284539, longitude: 103.782493)
+    @State private var selectedTab: AppTab = .home
+
     var body: some View {
-        VStack(spacing: 16) {
-            
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house", value: .home) {
+                RecommendationTab()
+            }
 
-            Text("SGTrip")
-                .font(.largeTitle.bold())
-
-            Text("Hello, Singapore!")
-                .font(.title)
-                .foregroundStyle(.secondary)
+            Tab("Memories", systemImage: "photo.on.rectangle", value: .memories) {
+                MemoriesTab()
+            }
         }
-        .padding()
     }
 }
+
 #Preview {
     ContentView()
+        .environment(TripStore())
 }
+
