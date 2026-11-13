@@ -3,6 +3,7 @@
 import SwiftUI
 import MapKit
 
+
 // 1. Data Model for each place
 struct Place: Identifiable, Hashable {
     let id = UUID()
@@ -22,6 +23,8 @@ struct Place: Identifiable, Hashable {
 
 // 2. Main Map View (Screen 1 - named RecommendationTab for your TabView)
 struct RecommendationTab: View {
+    @Binding var selectedTab: AppTab
+
     let places: [Place] = [
         Place(
             name: "Chinatown Food Street",
@@ -71,18 +74,34 @@ struct RecommendationTab: View {
     
     var body: some View {
         NavigationStack {
-            Map(position: $cameraPosition) {
-                ForEach(places) { place in
-                    Annotation(place.name, coordinate: place.coordinate) {
-                        Button {
-                            selectedPlace = place
-                        } label: {
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.title)
-                                .foregroundStyle(.red)
-                                .background(Color.white.clipShape(Circle()))
+            GeometryReader { proxy in
+                VStack(spacing: 20) {
+                    Map(position: $cameraPosition) {
+                        ForEach(places) { place in
+                            Annotation(place.name, coordinate: place.coordinate) {
+                                Button {
+                                    selectedPlace = place
+                                } label: {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.title)
+                                        .foregroundStyle(.red)
+                                        .background(Color.white.clipShape(Circle()))
+                                }
+                            }
                         }
                     }
+                    // Only take up half of the screen height.
+                    .frame(height: proxy.size.height * 0.5)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal)
+
+                    HStack(spacing: 16) {
+                        navigationButton(title: "Home", icon: "house.fill", tab: .home)
+                        navigationButton(title: "Memories", icon: "photo.on.rectangle.fill", tab: .memories)
+                    }
+                    .padding(.horizontal)
+
+                    Spacer(minLength: 0)
                 }
             }
             .navigationTitle("SG Trip")
@@ -90,6 +109,26 @@ struct RecommendationTab: View {
                 LocationDetailView(place: place)
             }
         }
+    }
+
+    // Rectangle button that switches to another top-level tab.
+    private func navigationButton(title: String, icon: String, tab: AppTab) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title3)
+                Text(title)
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 70)
+            .background(Color.blue.opacity(0.15))
+            .foregroundStyle(.blue)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -180,11 +219,7 @@ struct LocationDetailView: View {
                         .background(Color.blue)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                // Only take up half of the screen height.
-                .frame(height: proxy.size.height * 0.5)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                Spacer(minLength: 0)
+            
             }
             .padding()
             .background(Color(.systemGray6))
@@ -196,6 +231,9 @@ struct LocationDetailView: View {
     }
 }
 
+
+
 #Preview {
-    RecommendationTab()
+    RecommendationTab(selectedTab: .constant(.places))
 }
+
