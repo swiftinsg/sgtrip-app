@@ -52,6 +52,19 @@ struct WelcomePage: View {
                     }
                 }
             }
+                .tabItem {
+                Label("Home", systemImage: "house.fill")
+            }
+            
+            MemoriesTab()
+                .tabItem {
+                    Label("Memories", systemImage: "heart.fill")
+                }
+            
+            RecommendationTab()
+                .tabItem {
+                    Label("Map", systemImage: "map.fill")
+                }
         } 
     }
 }
