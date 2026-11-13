@@ -1,22 +1,26 @@
 import SwiftUI
-import MapKit
 
 struct ContentView: View {
-    let tower = CLLocationCoordinate2D(latitude: 1.284539, longitude: 103.782493)
     var body: some View {
-        VStack(spacing: 16) {
-            
+        TabView {
+            WelcomePage()
+                .tabItem {
+                    Label("Welcome", systemImage: "house")
+                }
 
-            Text("SGTrip")
-                .font(.largeTitle.bold())
+            RecommendationTab()
+                .tabItem {
+                    Label("Places", systemImage: "map")
+                }
 
-            Text("Hello, Singapore!")
-                .font(.title)
-                .foregroundStyle(.secondary)
+            MemoriesTab()
+                .tabItem {
+                    Label("Memories", systemImage: "photo.on.rectangle")
+                }
         }
-        .padding()
     }
 }
+
 #Preview {
     ContentView()
 }
