@@ -84,7 +84,7 @@ struct RecommendationTab: View {
 
     // MARK: Recommended Places
 
-    // This array stores the six recommended Singapore locations.
+    // This array stores the eight recommended Singapore locations.
     // Each Place contains its name, category, address,
     // photo challenge and GPS coordinates.
     private let places: [Place] = [
@@ -152,6 +152,39 @@ struct RecommendationTab: View {
                 coordinate: CLLocationCoordinate2D(
                     latitude: 1.31127,
                         longitude: 103.90112
+           )
+            ),
+            
+            Place(
+                name: "Kampong Lorong Buangkok",
+                infoType: "Historic",
+                locationDescription: "7 Lorong Buangkok/Hougang",
+                photoPrompt: "Take a cute selfie with the kampong!",
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 1.38394,
+                       longitude: 103.87852
+           )
+            ),
+            
+            Place(
+                name: "East Coast Park",
+                infoType: "Nature & Scenic",
+                locationDescription: "East Coast Park Service Road",
+                photoPrompt: "Take some time to explore the beaches and choose the very best spot to take a photo!",
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 1.303956,
+                        longitude: 103.926373
+           )
+            ),
+            
+            Place(
+                name: "Thomson nature park",
+                infoType: "Nature & Scenic",
+                locationDescription: "Upper Thomson Road",
+                photoPrompt: "Take a picture with a background that you like there!",
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 1.386471,
+                       longitude: 103.821074
            )
         )
     ]
