@@ -175,6 +175,17 @@ struct RecommendationTab: View {
                     latitude: 1.303956,
                         longitude: 103.926373
            )
+            ),
+            
+            Place(
+                name: "Thomson nature park",
+                infoType: "Nature & Scenic",
+                locationDescription: "Upper Thomson Road",
+                photoPrompt: "Take a picture with a background that you like there!",
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 1.386471,
+                       longitude: 103.821074
+           )
         )
     ]
 
