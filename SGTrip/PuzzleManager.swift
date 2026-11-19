@@ -1,4 +1,3 @@
-
 import SwiftUI
 import Combine
 import UIKit
@@ -28,36 +27,41 @@ final class PuzzleManager: ObservableObject {
 
     init() {
         loadPuzzles()
+        createNextPuzzleIfNeeded()
+    }
+
+    // MARK: - CREATE NEXT PUZZLE
+
+    private func createNextPuzzleIfNeeded() {
+
+        // Do not create another empty puzzle if one already exists.
+        if puzzles.contains(where: { !$0.isCompleted }) {
+            return
+        }
+
+        let nextNumber = (puzzles.map { $0.number }.max() ?? 0) + 1
+
+        let newPuzzle = PuzzleRecord(
+            id: UUID(),
+            number: nextNumber,
+            photos: [],
+            isCompleted: false
+        )
+
+        puzzles.append(newPuzzle)
+        saveMetadata()
     }
 
     // MARK: - ADD PHOTO
 
     func addPhoto(imageData: Data) {
 
-        let index: Int
-
-        if let existingIndex = puzzles.firstIndex(
+        guard let index = puzzles.firstIndex(
             where: { !$0.isCompleted }
-        ) {
-
-            index = existingIndex
-
-        } else {
-
-            let nextNumber = (puzzles.map {
-                $0.number
-            }.max() ?? 0) + 1
-
-            let newPuzzle = PuzzleRecord(
-                id: UUID(),
-                number: nextNumber,
-                photos: [],
-                isCompleted: false
-            )
-
-            puzzles.append(newPuzzle)
-
-            index = puzzles.count - 1
+        ) else {
+            createNextPuzzleIfNeeded()
+            addPhoto(imageData: imageData)
+            return
         }
 
         savePhoto(imageData, to: index)
@@ -68,7 +72,6 @@ final class PuzzleManager: ObservableObject {
     private func savePhoto(_ data: Data, to index: Int) {
 
         do {
-
             try FileManager.default.createDirectory(
                 at: folderURL,
                 withIntermediateDirectories: true
@@ -93,14 +96,17 @@ final class PuzzleManager: ObservableObject {
 
             puzzles[index].photos.append(photo)
 
-            if puzzles[index].photos.count == puzzleSize {
+            // Complete the puzzle after photo 30.
+            if puzzles[index].photos.count >= puzzleSize {
                 puzzles[index].isCompleted = true
+
+                // Immediately create the next puzzle.
+                createNextPuzzleIfNeeded()
             }
 
             saveMetadata()
 
         } catch {
-
             print("Photo saving error:", error)
         }
     }
@@ -125,6 +131,10 @@ final class PuzzleManager: ObservableObject {
     private func saveMetadata() {
 
         do {
+            try FileManager.default.createDirectory(
+                at: folderURL,
+                withIntermediateDirectories: true
+            )
 
             let data = try JSONEncoder().encode(puzzles)
 
@@ -134,7 +144,6 @@ final class PuzzleManager: ObservableObject {
             )
 
         } catch {
-
             print("Puzzle saving error:", error)
         }
     }
@@ -144,7 +153,6 @@ final class PuzzleManager: ObservableObject {
     private func loadPuzzles() {
 
         do {
-
             try FileManager.default.createDirectory(
                 at: folderURL,
                 withIntermediateDirectories: true
@@ -165,8 +173,8 @@ final class PuzzleManager: ObservableObject {
             )
 
         } catch {
-
             print("Puzzle loading error:", error)
+            puzzles = []
         }
     }
 }
