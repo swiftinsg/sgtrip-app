@@ -84,7 +84,7 @@ struct RecommendationTab: View {
 
     // MARK: Recommended Places
 
-    // This array stores the five recommended Singapore locations.
+    // This array stores the six recommended Singapore locations.
     // Each Place contains its name, category, address,
     // photo challenge and GPS coordinates.
     private let places: [Place] = [
@@ -142,6 +142,17 @@ struct RecommendationTab: View {
                 latitude: 1.2805,
                 longitude: 103.8711
             )
+            ),
+            
+            Place(
+                name: "Katong Shophouses",
+                infoType: "Historic",
+                locationDescription: "Joo Chiat Road",
+                photoPrompt: "Take a wide shot of the Singapore skyline!",
+                coordinate: CLLocationCoordinate2D(
+                    latitude: 1.31127,
+                        longitude: 103.90112
+           )
         )
     ]
 
