@@ -68,6 +68,14 @@ enum RecommendationSheet: Identifiable {
     }
 }
 
+// Measures the card's natural height so the sheet can hug its content.
+private struct SheetHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 // MARK: - 3. RECOMMENDATION TAB
 
 struct RecommendationTab: View {
@@ -199,6 +207,12 @@ struct RecommendationTab: View {
     // or be nil when there is no active photo challenge.
     @State private var currentPrompt: Place?
 
+    // Measured height of the card content, so the sheet has no blank space.
+    @State private var sheetContentHeight: CGFloat = 0
+
+    // Becomes true after Skip is pressed once, so the button disappears.
+    @State private var didSkipPrompt = false
+
     // Stores which detail sheet should currently be displayed.
     // It can contain a place, a memory, or nil if no sheet is open.
     //
@@ -238,46 +252,21 @@ struct RecommendationTab: View {
         // and supports navigation-related features.
         NavigationStack {
 
-            // VStack arranges its child views vertically.
-            // spacing: 0 removes additional spacing between them.
-            VStack(spacing: 0) {
+            GeometryReader { proxy in
+                ZStack(alignment: .top) {
 
-                // Today's photo challenge
-                promptCard
+                    // Interactive map fills the whole screen.
+                    tripMap
+                        .ignoresSafeArea()
 
-                // Map legend
-                mapLegend
-
-                // Interactive map
-                tripMap
-            }
-
-            .navigationTitle("SG Trip")
-            .navigationBarTitleDisplayMode(.inline)
-
-            // SKIP BUTTON
-
-            // .toolbar adds buttons and other controls to the navigation bar.
-            .toolbar {
-
-                ToolbarItem(placement: .topBarTrailing) {
-
-                    Button {
-                        skipCurrentPrompt()
-                    } label: {
-
-                        Label(
-                            "Skip",
-                            systemImage: "forward.fill"
-                        )
-                        .font(.headline)
-                        .foregroundStyle(.red)
-                    }
-
-                    // Disables the Skip button when currentPrompt is nil.
-                    .disabled(currentPrompt == nil)
+                    // Today's photo challenge hugs the top of the phone.
+                    promptSheet(
+                        maxHeight: proxy.size.height,
+                        topInset: proxy.safeAreaInsets.top
+                    )
                 }
             }
+            
 
             // DETAIL SHEETS
 
@@ -323,6 +312,10 @@ struct RecommendationTab: View {
 
                             tripStore.addMemory(
                                 placeName: memory.placeName,
+                                locationDescription: place.locationDescription,
+                                date: memory.dateTaken,
+                                latitude: memory.coordinate.latitude,
+                                longitude: memory.coordinate.longitude,
                                 imageData: imageData
                             )
                         }
@@ -373,77 +366,143 @@ struct RecommendationTab: View {
 
                 Spacer()
 
-                Image(systemName: "calendar")
-                    .foregroundStyle(.secondary)
-            }
-
-            // if let safely unwraps currentPrompt.
-            // It only displays the challenge if a Place exists.
-            if let prompt = currentPrompt {
-
-                Text(prompt.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-                Text(prompt.photoPrompt)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                HStack {
-
-                    Label(
-                        prompt.locationDescription,
-                        systemImage: "location.fill"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    Spacer()
+                // Skip now lives here in place of the calendar icon.
+                if !didSkipPrompt {
 
                     Button {
-
-                        // Changes activeSheet to .place(prompt).
-                        // This tells the app to display the location details.
-                        activeSheet = .place(prompt)
-
+                        skipCurrentPrompt()
                     } label: {
 
                         Label(
-                            "Take Photo",
-                            systemImage: "camera.fill"
+                            "Skip",
+                            systemImage: "forward.fill"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(currentPrompt == nil)
+                }
+            }
+
+            // Details block with its own grey background.
+            VStack(alignment: .leading, spacing: 12) {
+
+                // if let safely unwraps currentPrompt.
+                // It only displays the challenge if a Place exists.
+                if let prompt = currentPrompt {
+
+                    Text(prompt.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text(prompt.photoPrompt)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    // Order is: location, then legend, then the button below them.
+                    VStack(alignment: .leading, spacing: 6) {
+
+                        Label(
+                            prompt.locationDescription,
+                            systemImage: "location.fill"
                         )
                         .font(.caption)
-                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                        mapLegend
+
+                        HStack {
+
+                            Spacer()
+
+                            Button {
+
+                                // Changes activeSheet to .place(prompt).
+                                // This tells the app to display the location details.
+                                activeSheet = .place(prompt)
+
+                            } label: {
+
+                                Label(
+                                    "Take Photo",
+                                    systemImage: "camera.fill"
+                                )
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
+
+                } else {
+
+                    // This section appears when no challenge is available.
+                    Text("No prompts available")
+                        .font(.headline)
+
+                    Text("Please check back for more photo challenges.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-
-            } else {
-
-                // This section appears when no challenge is available.
-                Text("No prompts available")
-                    .font(.headline)
-
-                Text("Please check back for more photo challenges.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
+            .padding(12)
+            .background(Color(.systemGray5))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
 
-        // padding adds space inside the card.
-        .padding()
+        // padding adds space inside the sheet.
+        .padding(.horizontal, 20)
+        .padding(.top, 1)
+        .padding(.bottom, 16)
 
         // Allows the card to expand across the available width.
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-        // Gives the card a system background colour.
+    // MARK: PROMPT SHEET
+
+    // The challenge card presented as a fixed sheet anchored at the top.
+    private func promptSheet(maxHeight: CGFloat, topInset: CGFloat) -> some View {
+
+        let sheetHeight: CGFloat = sheetContentHeight > 0
+            ? min(maxHeight, sheetContentHeight)
+            : maxHeight
+
+        return VStack(spacing: 0) {
+
+            promptCard
+        }
+        // A little breathing room below the Dynamic Island, no grabber bar.
+        .padding(.top, topInset + 12)
+        .frame(maxWidth: .infinity)
+        // Measure the card's natural height so there is no blank space below it.
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(
+                        key: SheetHeightPreferenceKey.self,
+                        value: proxy.size.height
+                    )
+            }
+        )
+        .onPreferenceChange(SheetHeightPreferenceKey.self) { height in
+            sheetContentHeight = height
+        }
+        .frame(height: sheetHeight, alignment: .top)
         .background(Color(.secondarySystemBackground))
-
-        // Rounds the corners of the card.
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-
-        .padding(.horizontal)
-        .padding(.top, 12)
+        .clipShape(
+            UnevenRoundedRectangle(
+                bottomLeadingRadius: 24,
+                bottomTrailingRadius: 24
+            )
+        )
+        .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+        // Fill the status bar / Dynamic Island area at the top of the phone.
+        .ignoresSafeArea(edges: .top)
     }
 
     // MARK: - 5. MAP LEGEND
@@ -478,7 +537,6 @@ struct RecommendationTab: View {
 
         .font(.system(size: 10, weight: .medium))
         .padding(.vertical, 12)
-        .padding(.horizontal, 8)
     }
 
     // MARK: - 6. INTERACTIVE MAP
@@ -598,9 +656,6 @@ struct RecommendationTab: View {
             // Displays a compass showing the map's orientation.
             MapCompass()
 
-            // Adds a button to move the map to the user's location.
-            MapUserLocationButton()
-
             // Displays a scale indicating geographical distances.
             MapScaleView()
         }
@@ -640,6 +695,9 @@ struct RecommendationTab: View {
 
     // Called when the user presses the Skip button.
     private func skipCurrentPrompt() {
+
+        // Remove the Skip button after its single use.
+        didSkipPrompt = true
 
         // Tells TripStore to skip the current challenge.
         tripStore.skipPrompt()

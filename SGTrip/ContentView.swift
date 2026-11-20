@@ -25,7 +25,7 @@ struct ContentView: View {
                 MemoriesTab()
             }
 
-            Tab("Puzzle Map", systemImage: "map", value: .puzzleMap) {
+            Tab("Puzzles", systemImage: "map", value: .puzzleMap) {
                 NavigationStack {
                     SingaporePuzzleMapView(
                         puzzleStore: puzzleStore
