@@ -1,78 +1,46 @@
 
+
 import SwiftUI
 import MapKit
 import CoreLocation
 import UIKit
+import PhotosUI
+import ImageIO
 
 // MARK: - 1. DATA MODELS
 
-// A data model is used to organise and store related information.
-// Identifiable allows SwiftUI to uniquely identify each Place,
-// which is useful when displaying multiple places using ForEach.
 struct Place: Identifiable {
-
-    // UUID() generates a unique ID for every place.
-    // This helps SwiftUI distinguish between different places.
     let id = UUID()
-
     let name: String
     let infoType: String
     let locationDescription: String
     let photoPrompt: String
-
-    // CLLocationCoordinate2D stores the latitude and longitude
-    // of a location so that it can be displayed on the map.
     let coordinate: CLLocationCoordinate2D
 }
 
-// This model stores information about a photo taken by the user.
 struct CapturedMemory: Identifiable {
-
     let id = UUID()
-
     let placeName: String
     let infoType: String
     let coordinate: CLLocationCoordinate2D
-
-    // UIImage stores the actual photo captured by the user.
     let image: UIImage
-
-    // Date stores when the photo was captured.
     let dateTaken: Date
+    let rawImageData: Data?
 }
 
 // MARK: - 2. SHEET CONTROLLER
 
-// An enum allows us to represent different types of sheets.
-// In this case, the app can display either a place detail sheet
-// or a saved memory detail sheet.
-//
-// Identifiable allows the enum to work with .sheet(item:).
 enum RecommendationSheet: Identifiable {
-
     case place(Place)
     case memory(CapturedMemory)
 
-    // This computed property provides a unique ID for each sheet.
-    // It checks which case is being used and returns the correct ID.
     var id: UUID {
-
         switch self {
-
         case .place(let place):
             return place.id
-
         case .memory(let memory):
             return memory.id
         }
-    }
-}
-
-// Measures the card's natural height so the sheet can hug its content.
-private struct SheetHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
     }
 }
 
@@ -80,236 +48,123 @@ private struct SheetHeightPreferenceKey: PreferenceKey {
 
 struct RecommendationTab: View {
 
-    // @Environment allows this view to access TripStore,
-    // which is an object shared with other parts of the app.
-    // This prevents us from having to create another TripStore.
     @Environment(TripStore.self) private var tripStore
-
-    // @StateObject creates and manages a LocationManager object.
-    // It keeps the same object alive while this view is active.
-    // LocationManager is responsible for retrieving the user's location.
     @StateObject private var locationManager = LocationManager()
 
-    // MARK: Recommended Places
+    // MARK: Default Singapore Map Region
 
-    // This array stores the eight recommended Singapore locations.
-    // Each Place contains its name, category, address,
-    // photo challenge and GPS coordinates.
+    private static let defaultSingaporeRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198),
+        span: MKCoordinateSpan(latitudeDelta: 0.22, longitudeDelta: 0.22)
+    )
+
+    // MARK: Recommended Places (All 10 Places Including Innovis)
+
     private let places: [Place] = [
-
         Place(
             name: "Haw Par Villa",
             infoType: "Cultural & Chinese Folklore",
             locationDescription: "262 Pasir Panjang Road",
             photoPrompt: "Take a photo with the iconic statues or Hell's Museum entrance!",
-            coordinate: CLLocationCoordinate2D(
-                latitude: 1.2845,
-                longitude: 103.7825
-            )
+            coordinate: CLLocationCoordinate2D(latitude: 1.2845, longitude: 103.7825)
         ),
-
         Place(
             name: "Burma Social",
             infoType: "Burmese & Pan-Asian",
             locationDescription: "34 Tras Street, Tanjong Pagar",
             photoPrompt: "Snap a photo of your Burmese tea leaf salad or cocktails!",
-            coordinate: CLLocationCoordinate2D(
-                latitude: 1.2788,
-                longitude: 103.8443
-            )
+            coordinate: CLLocationCoordinate2D(latitude: 1.2788, longitude: 103.8443)
         ),
-
         Place(
             name: "Chinatown Food Street",
             infoType: "Chinese",
             locationDescription: "Smith Street, Chinatown",
             photoPrompt: "Snap a photo of your favourite dim sum or hawker dish!",
-            coordinate: CLLocationCoordinate2D(
-                latitude: 1.2820,
-                longitude: 103.8448
-            )
+            coordinate: CLLocationCoordinate2D(latitude: 1.2820, longitude: 103.8448)
         ),
-
         Place(
             name: "Tekka Centre",
             infoType: "Indian",
             locationDescription: "665 Buffalo Road, Little India",
             photoPrompt: "Take a photo of the colourful spices or biryani!",
-            coordinate: CLLocationCoordinate2D(
-                latitude: 1.3061,
-                longitude: 103.8507
-            )
+            coordinate: CLLocationCoordinate2D(latitude: 1.3061, longitude: 103.8507)
         ),
-
         Place(
             name: "Marina Barrage",
             infoType: "Nature & Scenic",
             locationDescription: "8 Marina Gardens Drive",
             photoPrompt: "Take a wide shot of the Singapore skyline!",
-            coordinate: CLLocationCoordinate2D(
-                latitude: 1.2805,
-                longitude: 103.8711
-            )
-            ),
-            
-            Place(
-                name: "Katong Shophouses",
-                infoType: "Historic",
-                locationDescription: "Joo Chiat Road",
-                photoPrompt: "Take a wide shot of the Singapore skyline!",
-                coordinate: CLLocationCoordinate2D(
-                    latitude: 1.31127,
-                        longitude: 103.90112
-           )
-            ),
-            
-            Place(
-                name: "Kampong Lorong Buangkok",
-                infoType: "Historic",
-                locationDescription: "7 Lorong Buangkok/Hougang",
-                photoPrompt: "Take a cute selfie with the kampong!",
-                coordinate: CLLocationCoordinate2D(
-                    latitude: 1.38394,
-                       longitude: 103.87852
-           )
-            ),
-            
-            Place(
-                name: "East Coast Park",
-                infoType: "Nature & Scenic",
-                locationDescription: "East Coast Park Service Road",
-                photoPrompt: "Take some time to explore the beaches and choose the very best spot to take a photo!",
-                coordinate: CLLocationCoordinate2D(
-                    latitude: 1.303956,
-                        longitude: 103.926373
-           )
-            ),
-            
-            Place(
-                name: "Thomson nature park",
-                infoType: "Nature & Scenic",
-                locationDescription: "Upper Thomson Road",
-                photoPrompt: "Take a picture with a background that you like there!",
-                coordinate: CLLocationCoordinate2D(
-                    latitude: 1.386471,
-                       longitude: 103.821074
-           )
+            coordinate: CLLocationCoordinate2D(latitude: 1.2805, longitude: 103.8711)
+        ),
+        Place(
+            name: "Katong Shophouses",
+            infoType: "Historic",
+            locationDescription: "Joo Chiat Road",
+            photoPrompt: "Take a wide shot of the colourful heritage shophouses!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.31127, longitude: 103.90112)
+        ),
+        Place(
+            name: "Kampong Lorong Buangkok",
+            infoType: "Historic",
+            locationDescription: "7 Lorong Buangkok/Hougang",
+            photoPrompt: "Take a cute selfie with the kampong!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.38394, longitude: 103.87852)
+        ),
+        Place(
+            name: "East Coast Park",
+            infoType: "Nature & Scenic",
+            locationDescription: "East Coast Park Service Road",
+            photoPrompt: "Take some time to explore the beaches and choose the very best spot to take a photo!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.303956, longitude: 103.926373)
+        ),
+        Place(
+            name: "Thomson Nature Park",
+            infoType: "Nature & Scenic",
+            locationDescription: "Upper Thomson Road",
+            photoPrompt: "Take a picture with a background that you like there!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.386471, longitude: 103.821074)
+        ),
+        Place(
+            name: "Innovis",
+            infoType: "Tech & Innovation",
+            locationDescription: "2 Fusionopolis Way",
+            photoPrompt: "Snap a photo of the modern architecture or tech hub at Fusionopolis!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.2984, longitude: 103.7887)
         )
     ]
 
     // MARK: State Variables
 
-    // @State tells SwiftUI to monitor this variable.
-    // Whenever its value changes, SwiftUI automatically refreshes
-    // the parts of the interface that depend on it.
-    //
-    // The ? means this variable can either contain a Place
-    // or be nil when there is no active photo challenge.
     @State private var currentPrompt: Place?
-
-    // Measured height of the card content, so the sheet has no blank space.
-    @State private var sheetContentHeight: CGFloat = 0
-
-    // Becomes true after Skip is pressed once, so the button disappears.
     @State private var didSkipPrompt = false
-
-    // Stores which detail sheet should currently be displayed.
-    // It can contain a place, a memory, or nil if no sheet is open.
-    //
-    // The $ symbol is used later to pass a Binding to SwiftUI.
     @State private var activeSheet: RecommendationSheet?
-
-    // Stores all the photo memories captured during the current session.
-    // An array [] allows multiple memories to be stored.
     @State private var savedMemories: [CapturedMemory] = []
+    @State private var cameraPosition: MapCameraPosition = .region(defaultSingaporeRegion)
 
-    // MapCameraPosition controls the map's camera position and zoom level.
-    // .region sets the initial visible geographical area of the map.
-    //
-    // MKCoordinateRegion contains:
-    // 1. center: the geographical centre of the map.
-    // 2. span: how much geographical area is visible.
-    //
-    // A smaller latitudeDelta and longitudeDelta means greater zoom.
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(
-                latitude: 1.3521,
-                longitude: 103.8198
-            ),
-            span: MKCoordinateSpan(
-                latitudeDelta: 0.22,
-                longitudeDelta: 0.22
-            )
-        )
-    )
-
-    // MARK: MAIN BODY
+    // MARK: Main Body
 
     var body: some View {
-
-        // NavigationStack provides a navigation structure
-        // and supports navigation-related features.
         NavigationStack {
+            ZStack(alignment: .top) {
+                tripMap
+                    .ignoresSafeArea()
 
-            GeometryReader { proxy in
-                ZStack(alignment: .top) {
-
-                    // Interactive map fills the whole screen.
-                    tripMap
-                        .ignoresSafeArea()
-
-                    // Today's photo challenge hugs the top of the phone.
-                    promptSheet(
-                        maxHeight: proxy.size.height,
-                        topInset: proxy.safeAreaInsets.top
-                    )
-                }
+                promptSheet
             }
-            
-
-            // DETAIL SHEETS
-
-            // .sheet presents another view as a modal sheet.
-            // item: $activeSheet observes changes to activeSheet.
-            //
-            // When activeSheet receives a value, the appropriate
-            // detail view is displayed.
-            // When it becomes nil, the sheet is dismissed.
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $activeSheet) { sheet in
-
-                // switch checks which type of sheet should be displayed.
                 switch sheet {
-
                 case .place(let place):
-
                     LocationDetailView(
                         place: place,
-
-                        // Passes the user's current GPS coordinates
-                        // to LocationDetailView, if available.
                         currentLocation: locationManager.userLocation?.coordinate
-
                     ) { memory in
-
-                        // Save memory locally.
-                        // insert(memory, at: 0) places the newest memory
-                        // at the beginning of the array.
                         savedMemories.insert(memory, at: 0)
 
-                        // Save memory permanently in TripStore.
-                        // This allows the memory to remain available
-                        // beyond the current view session.
+                        let imageDataToSave = memory.rawImageData
+                            ?? memory.image.jpegData(compressionQuality: 0.9)
 
-                        // jpegData converts the UIImage into JPEG data
-                        // so that it can be stored as image data.
-                        //
-                        // compressionQuality: 0.9 provides
-                        // relatively high image quality.
-                        if let imageData = memory.image.jpegData(
-                            compressionQuality: 0.9
-                        ) {
-
+                        if let imageData = imageDataToSave {
                             tripStore.addMemory(
                                 placeName: memory.placeName,
                                 locationDescription: place.locationDescription,
@@ -322,25 +177,12 @@ struct RecommendationTab: View {
                     }
 
                 case .memory(let memory):
-
-                    // Displays the selected saved photo and its details.
                     MemoryDetailView(memory: memory)
                 }
             }
-
-            // INITIAL SETUP
-
-            // .task runs asynchronous work when the view appears.
-            // SwiftUI can cancel this task when the view disappears.
             .task {
-
-                // Starts retrieving the user's current GPS location.
                 locationManager.startUpdatingLocation()
-
-                // Loads the next available photo challenge.
                 loadCurrentPrompt()
-
-                // Waits for midnight and refreshes the daily prompt.
                 await midnightRefreshLoop()
             }
         }
@@ -348,889 +190,526 @@ struct RecommendationTab: View {
 
     // MARK: - 4. TODAY'S PROMPT CARD
 
-    // A computed property that creates the photo challenge card.
-    // Keeping it separate makes the main body easier to read.
     private var promptCard: some View {
-
-        VStack(alignment: .leading, spacing: 12) {
-
-            HStack {
-
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: "sparkles")
+                    .font(.caption)
                     .foregroundStyle(.orange)
 
                 Text("TODAY'S PHOTO CHALLENGE")
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.bold)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                // Skip now lives here in place of the calendar icon.
-                if !didSkipPrompt {
+                Button {
+                    resetMapToSingapore()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.blue)
+                        .padding(5)
+                        .background(Color.blue.opacity(0.12), in: Circle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Reset map to Singapore")
 
+                if !didSkipPrompt {
                     Button {
                         skipCurrentPrompt()
                     } label: {
-
-                        Label(
-                            "Skip",
-                            systemImage: "forward.fill"
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.12), in: Capsule())
+                        Label("Skip", systemImage: "forward.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
                     }
                     .buttonStyle(.borderless)
                     .disabled(currentPrompt == nil)
                 }
             }
 
-            // Details block with its own grey background.
-            VStack(alignment: .leading, spacing: 12) {
-
-                // if let safely unwraps currentPrompt.
-                // It only displays the challenge if a Place exists.
+            VStack(alignment: .leading, spacing: 5) {
                 if let prompt = currentPrompt {
-
                     Text(prompt.name)
-                        .font(.title2)
+                        .font(.headline)
                         .fontWeight(.bold)
 
                     Text(prompt.photoPrompt)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    // Order is: location, then legend, then the button below them.
-                    VStack(alignment: .leading, spacing: 6) {
-
-                        Label(
-                            prompt.locationDescription,
-                            systemImage: "location.fill"
-                        )
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                        mapLegend
+                    HStack(alignment: .center, spacing: 8) {
+                        Label(prompt.locationDescription, systemImage: "location.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
 
-                        HStack {
+                        Spacer()
 
-                            Spacer()
-
-                            Button {
-
-                                // Changes activeSheet to .place(prompt).
-                                // This tells the app to display the location details.
-                                activeSheet = .place(prompt)
-
-                            } label: {
-
-                                Label(
-                                    "Take Photo",
-                                    systemImage: "camera.fill"
-                                )
-                                .font(.caption)
+                        Button {
+                            activeSheet = .place(prompt)
+                        } label: {
+                            Label("Take Photo", systemImage: "camera.fill")
+                                .font(.caption2)
                                 .fontWeight(.semibold)
-                            }
-                            .buttonStyle(.borderedProminent)
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                     }
+                    .padding(.top, 2)
 
+                    Divider()
+                        .padding(.vertical, 2)
+
+                    mapLegend
                 } else {
-
-                    // This section appears when no challenge is available.
                     Text("No prompts available")
-                        .font(.headline)
-
-                    Text("Please check back for more photo challenges.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(12)
-            .background(Color(.systemGray5))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
 
-        // padding adds space inside the sheet.
-        .padding(.horizontal, 20)
-        .padding(.top, 1)
-        .padding(.bottom, 16)
 
-        // Allows the card to expand across the available width.
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: PROMPT SHEET
-
-    // The challenge card presented as a fixed sheet anchored at the top.
-    private func promptSheet(maxHeight: CGFloat, topInset: CGFloat) -> some View {
-
-        let sheetHeight: CGFloat = sheetContentHeight > 0
-            ? min(maxHeight, sheetContentHeight)
-            : maxHeight
-
-        return VStack(spacing: 0) {
-
-            promptCard
-        }
-        // A little breathing room below the Dynamic Island, no grabber bar.
-        .padding(.top, topInset + 12)
-        .frame(maxWidth: .infinity)
-        // Measure the card's natural height so there is no blank space below it.
-        .background(
-            GeometryReader { proxy in
-                Color.clear
-                    .preference(
-                        key: SheetHeightPreferenceKey.self,
-                        value: proxy.size.height
-                    )
-            }
-        )
-        .onPreferenceChange(SheetHeightPreferenceKey.self) { height in
-            sheetContentHeight = height
-        }
-        .frame(height: sheetHeight, alignment: .top)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(
-            UnevenRoundedRectangle(
-                bottomLeadingRadius: 24,
-                bottomTrailingRadius: 24
-            )
-        )
-        .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-        // Fill the status bar / Dynamic Island area at the top of the phone.
-        .ignoresSafeArea(edges: .top)
-    }
-
-    // MARK: - 5. MAP LEGEND
-
-    // Explains what the different coloured map pins represent.
-    private var mapLegend: some View {
-
-        // HStack arranges its elements horizontally.
-        HStack(spacing: 14) {
-
-            // Red represents recommended places.
-            Label(
-                "Recommended",
-                systemImage: "mappin.circle.fill"
-            )
-            .foregroundStyle(.red)
-
-            // Orange represents saved photo memories.
-            Label(
-                "Memories",
-                systemImage: "camera.circle.fill"
-            )
-            .foregroundStyle(.orange)
-
-            // Green represents previously visited places.
-            Label(
-                "Visited",
-                systemImage: "mappin.circle.fill"
-            )
-            .foregroundStyle(.green)
-        }
-
-        .font(.system(size: 10, weight: .medium))
-        .padding(.vertical, 12)
-    }
-
-    // MARK: - 6. INTERACTIVE MAP
-
-    // This computed property creates the interactive MapKit map.
-    // The map displays three different categories of pins.
-    private var tripMap: some View {
-
-        // Map(position:) creates a map controlled by cameraPosition.
-        // The $ passes a Binding so the map can update its camera position.
-        Map(position: $cameraPosition) {
-
-            // RED PINS: RECOMMENDED PLACES
-
-            // ForEach loops through every Place in the places array.
-            // It creates one map annotation for each recommended location.
-            ForEach(places) { place in
-
-                // Annotation places a customised view at a GPS coordinate.
-                // anchor: .bottom aligns the bottom of the pin
-                // with the actual geographical coordinate.
-                Annotation(
-                    place.name,
-                    coordinate: place.coordinate,
-                    anchor: .bottom
-                ) {
-
-                    VStack(spacing: 3) {
-
-                        Image(systemName: "mappin.circle.fill")
-                            .font(.title)
-                            .foregroundStyle(.red)
-                            .background(Color.white)
-                            .clipShape(Circle())
-
-                        Text(place.name)
-                            .font(.caption2)
-                            .foregroundStyle(.primary)
-                            .padding(3)
-                            .background(.regularMaterial)
-                            .clipShape(Capsule())
-                    }
-
-                    // onTapGesture detects when the user taps the annotation.
-                    .onTapGesture {
-
-                        // Opens the detail sheet for the selected place.
-                        activeSheet = .place(place)
-                    }
-                }
-            }
-
-            // YELLOW PINS: SAVED PHOTO MEMORIES
-
-            // Loops through every captured memory in savedMemories.
-            ForEach(savedMemories) { memory in
-
-                Annotation(
-                    memory.placeName,
-                    coordinate: memory.coordinate,
-                    anchor: .bottom
-                ) {
-
-                    VStack(spacing: 3) {
-
-                        Image(systemName: "camera.circle.fill")
-                            .font(.title)
-                            .foregroundStyle(.yellow)
-                            .background(Color.black)
-                            .clipShape(Circle())
-
-                        Text(memory.placeName)
-                            .font(.caption2)
-                            .foregroundStyle(.primary)
-                    }
-
-                    .onTapGesture {
-
-                        // Opens the detail sheet for the selected memory.
-                        activeSheet = .memory(memory)
-                    }
-                }
-            }
-
-            // GREEN PINS: PREVIOUSLY VISITED PLACES
-
-            // tripStore.memories contains memories saved in persistent storage.
-            // ForEach creates an annotation for each saved memory.
-            ForEach(tripStore.memories) { memory in
-
-                // extractCoordinate attempts to retrieve GPS coordinates
-                // from the saved image's metadata.
-                //
-                // if let ensures that an annotation is only created
-                // if valid coordinates are available.
-                if let coordinate = extractCoordinate(memory) {
-
-                    Annotation(
-                        memory.placeName,
-                        coordinate: coordinate,
-                        anchor: .bottom
-                    ) {
-
-                        Image(systemName: "mappin.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.green)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                    }
-                }
-            }
-        }
-
-        // .mapControls adds built-in MapKit controls.
-        .mapControls {
-
-            // Displays a compass showing the map's orientation.
-            MapCompass()
-
-            // Displays a scale indicating geographical distances.
-            MapScaleView()
-        }
-    }
-
-    // MARK: - 7. PROMPT MANAGEMENT
-
-    // This function loads the next available photo challenge.
-    private func loadCurrentPrompt() {
-
-        // guard let safely checks whether TripStore has another prompt.
-        // If no prompt exists, the function stops immediately.
-        guard let recommendedPlace = tripStore.getNextPrompt() else {
-
-            // nil means that no photo challenge is currently available.
-            currentPrompt = nil
-            return
-        }
-
-        // Converts the recommended place from TripStore
-        // into the Place model used by RecommendationTab.
-        currentPrompt = Place(
-
-            name: recommendedPlace.name,
-
-            infoType: recommendedPlace.infoType,
-
-            locationDescription: recommendedPlace.locationDescription,
-
-            photoPrompt: recommendedPlace.photoPrompt,
-
-            coordinate: recommendedPlace.coordinate
-        )
-    }
-
-    // MARK: SKIP CURRENT PROMPT
-
-    // Called when the user presses the Skip button.
-    private func skipCurrentPrompt() {
-
-        // Remove the Skip button after its single use.
-        didSkipPrompt = true
-
-        // Tells TripStore to skip the current challenge.
-        tripStore.skipPrompt()
-
-        // Immediately loads the next available challenge.
-        loadCurrentPrompt()
-    }
-
-    // MARK: - 8. DAILY MIDNIGHT RESET
-
-    // async means this function can perform asynchronous operations.
-    // It allows the app to wait without blocking the main thread.
-    private func midnightRefreshLoop() async {
-
-        // while repeats the code until the task is cancelled.
-        while !Task.isCancelled {
-
-            // Calendar.current uses the user's current calendar.
-            let calendar = Calendar.current
-
-            // Gets the current date and time.
-            let now = Date()
-
-            // Calculates the start of tomorrow.
-            // calendar.startOfDay(for: now) gets today's midnight.
-            // Adding one day gives tomorrow's midnight.
-            let tomorrow = calendar.date(
-                byAdding: .day,
-                value: 1,
-                to: calendar.startOfDay(for: now)
-            ) ?? now.addingTimeInterval(86400)
-
-            // Calculates how many seconds remain until midnight.
-            // max(1, ...) ensures the result is never less than one second.
-            let secondsUntilMidnight = max(
-                1,
-                tomorrow.timeIntervalSince(now) + 1
-            )
-
-            do {
-
-                // Task.sleep pauses this asynchronous task.
-                // It does NOT freeze the entire app.
-                //
-                // nanoseconds are used because Task.sleep expects
-                // its waiting time in nanoseconds.
-                //
-                // 1 second = 1,000,000,000 nanoseconds.
-                try await Task.sleep(
-                    nanoseconds: UInt64(
-                        secondsUntilMidnight * 1_000_000_000
-                    )
-                )
-
-            } catch {
-
-                // If the task is cancelled during sleep,
-                // the function exits instead of continuing.
-                return
-            }
-
-            // Checks again whether the task has been cancelled.
-            guard !Task.isCancelled else {
-                return
-            }
-
-            // Loads a fresh prompt after midnight.
-            loadCurrentPrompt()
-        }
-    }
-
-    // MARK: - 9. GPS COORDINATE EXTRACTION
-
-    // This function retrieves GPS coordinates from a SavedMemory.
-    //
-    // CLLocationCoordinate2D? means the function might return
-    // valid coordinates or nil if no coordinates are available.
-    private func extractCoordinate(
-        _ memory: SavedMemory
-    ) -> CLLocationCoordinate2D? {
-
-        // Delegates the GPS extraction process to TripStore.
-        // imageData contains the saved image data.
-        // The function attempts to extract its GPS metadata.
-        return tripStore.extractCoordinate(
-            from: memory.imageData
-        )
-    }
+.fontWeight(.semibold)
+Text("Please check back for more photo challenges.")
+.font(.caption)
+.foregroundStyle(.secondary)
+mapLegend
+.padding(.top, 2)
 }
-
-// MARK: - 10. LOCATION DETAIL VIEW
-
+}
+.padding(10)
+.background(Color(.systemGray5))
+.clipShape(RoundedRectangle(cornerRadius: 12))
+}
+.padding(.horizontal, 16)
+.padding(.bottom, 10)
+.frame(maxWidth: .infinity, alignment: .leading)
+}
+// MARK: Prompt Sheet
+private var promptSheet: some View {
+promptCard
+.padding(.top, 8)
+.background(
+UnevenRoundedRectangle(
+bottomLeadingRadius: 20,
+bottomTrailingRadius: 20
+)
+.fill(Color(.secondarySystemBackground))
+.shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+.ignoresSafeArea(edges: .top)
+)
+}
+// MARK: - 5. MAP LEGEND
+private var mapLegend: some View {
+HStack(spacing: 14) {
+Label("Recommended", systemImage: "mappin.circle.fill")
+.foregroundStyle(.red)
+Label("Memories", systemImage: "camera.circle.fill")
+.foregroundStyle(.orange)
+Label("Visited", systemImage: "mappin.circle.fill")
+.foregroundStyle(.green)
+}
+.font(.system(size: 10, weight: .medium))
+}
+// MARK: - 6. INTERACTIVE MAP
+private var tripMap: some View {
+Map(position: $cameraPosition) {
+UserAnnotation()
+// Red Pins: Recommended Places
+ForEach(places) { place in
+Annotation("", coordinate: place.coordinate, anchor: .bottom) {
+VStack(spacing: 2) {
+Image(systemName: "mappin.circle.fill")
+.font(.title2)
+.foregroundStyle(.red)
+.background(Color.white)
+.clipShape(Circle())
+Text(place.name)
+.font(.caption2)
+.fontWeight(.medium)
+.foregroundStyle(.primary)
+.padding(.horizontal, 6)
+.padding(.vertical, 2)
+.background(.regularMaterial)
+.clipShape(Capsule())
+}
+.onTapGesture {
+activeSheet = .place(place)
+}
+}
+}
+// Yellow Pins: Saved Photo Memories
+ForEach(savedMemories) { memory in
+Annotation("", coordinate: memory.coordinate, anchor: .bottom) {
+VStack(spacing: 2) {
+Image(systemName: "camera.circle.fill")
+.font(.title2)
+.foregroundStyle(.yellow)
+.background(Color.black)
+.clipShape(Circle())
+Text(memory.placeName)
+.font(.caption2)
+.fontWeight(.medium)
+.foregroundStyle(.primary)
+.padding(.horizontal, 6)
+.padding(.vertical, 2)
+.background(.regularMaterial)
+.clipShape(Capsule())
+}
+.onTapGesture {
+activeSheet = .memory(memory)
+}
+}
+}
+// Green Pins: Previously Visited Places
+ForEach(tripStore.memories) { memory in
+if let coordinate = extractCoordinate(memory) {
+Annotation("", coordinate: coordinate, anchor: .bottom) {
+VStack(spacing: 2) {
+Image(systemName: "mappin.circle.fill")
+.font(.title2)
+.foregroundStyle(.green)
+.background(Color.white)
+.clipShape(Circle())
+Text(memory.placeName)
+.font(.caption2)
+.fontWeight(.medium)
+.foregroundStyle(.primary)
+.padding(.horizontal, 6)
+.padding(.vertical, 2)
+.background(.regularMaterial)
+.clipShape(Capsule())
+}
+}
+}
+}
+}
+.mapControls {
+MapCompass()
+MapScaleView()
+}
+}
+// MARK: - 7. MAP & PROMPT MANAGEMENT
+private func resetMapToSingapore() {
+withAnimation(.easeInOut(duration: 0.5)) {
+cameraPosition = .region(Self.defaultSingaporeRegion)
+}
+}
+private func loadCurrentPrompt() {
+guard let recommendedPlace = tripStore.getNextPrompt() else {
+currentPrompt = places.first
+return
+}
+currentPrompt = Place(
+name: recommendedPlace.name,
+infoType: recommendedPlace.infoType,
+locationDescription: recommendedPlace.locationDescription,
+photoPrompt: recommendedPlace.photoPrompt,
+coordinate: recommendedPlace.coordinate
+)
+}
+private func skipCurrentPrompt() {
+didSkipPrompt = true
+tripStore.skipPrompt()
+let remainingPlaces = places.filter { $0.name != currentPrompt?.name }
+if let nextPlace = remainingPlaces.randomElement() {
+currentPrompt = nextPlace
+} else {
+loadCurrentPrompt()
+}
+}
+// MARK: - 8. DAILY MIDNIGHT RESET
+private func midnightRefreshLoop() async {
+while !Task.isCancelled {
+let calendar = Calendar.current
+let now = Date()
+let tomorrow = calendar.date(
+byAdding: .day,
+value: 1,
+to: calendar.startOfDay(for: now)
+) ?? now.addingTimeInterval(86400)
+let secondsUntilMidnight = max(1, tomorrow.timeIntervalSince(now) + 1)
+do {
+try await Task.sleep(nanoseconds: UInt64(secondsUntilMidnight * 1_000_000_000))
+} catch {
+return
+}
+guard !Task.isCancelled else { return }
+didSkipPrompt = false
+loadCurrentPrompt()
+}
+}
+// MARK: - 9. GPS COORDINATE EXTRACTION
+private func extractCoordinate(_ memory: SavedMemory) -> CLLocationCoordinate2D? {
+tripStore.extractCoordinate(from: memory.imageData)
+}
+}
+// MARK: - 10. LOCATION DETAIL VIEW (EXIF METADATA VERIFICATION)
 struct LocationDetailView: View {
-
-    // @Environment(\.dismiss) provides a way to close this view.
-    @Environment(\.dismiss) private var dismiss
-
-    // Receives the selected place from RecommendationTab.
-    let place: Place
-
-    // Receives the user's current GPS coordinates.
-    // It is optional because the location might not be available.
-    let currentLocation: CLLocationCoordinate2D?
-
-    // This closure allows LocationDetailView to send a captured
-    // memory back to RecommendationTab for saving.
-    //
-    // (CapturedMemory) -> Void means it accepts a CapturedMemory
-    // and does not return a value.
-    var onSaveMemory: (CapturedMemory) -> Void
-
-    // Stores the camera position of the smaller location map.
-    @State private var detailCamera: MapCameraPosition
-
-    // Controls whether the camera/photo picker sheet is displayed.
-    @State private var showCamera = false
-
-    // Stores the photo selected or captured by the user.
-    // nil means that no photo has been selected yet.
-    @State private var capturedImage: UIImage?
-
-    // Initializer runs when LocationDetailView is created.
-    init(
-        place: Place,
-        currentLocation: CLLocationCoordinate2D?,
-        onSaveMemory: @escaping (CapturedMemory) -> Void
-    ) {
-
-        self.place = place
-
-        self.currentLocation = currentLocation
-
-        self.onSaveMemory = onSaveMemory
-
-        // @State properties need to be initialised using State(initialValue:).
-        //
-        // The detail map starts centred on the selected place.
-        // A smaller span creates a closer zoom level.
-        _detailCamera = State(
-            initialValue: .region(
-                MKCoordinateRegion(
-                    center: place.coordinate,
-                    span: MKCoordinateSpan(
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01
-                    )
-                )
-            )
-        )
-    }
-
-    var body: some View {
-
-        VStack(spacing: 20) {
-
-            // CLOSE BUTTON
-
-            HStack {
-
-                Spacer()
-
-                Button {
-
-                    // dismiss() closes the current detail view.
-                    dismiss()
-
-                } label: {
-
-                    Image(systemName: "xmark")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .padding(10)
-                        .background(Color(.systemGray5))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
-
-            // LOCATION MAP
-
-            // Displays a smaller map centred on the selected place.
-            Map(position: $detailCamera) {
-
-                // Marker creates a standard map pin at the location.
-                Marker(
-                    place.name,
-                    coordinate: place.coordinate
-                )
-            }
-
-            .frame(height: 180)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            // LOCATION INFORMATION
-
-            VStack(alignment: .leading, spacing: 8) {
-
-                Text(place.name)
-                    .font(.title2)
-                    .bold()
-
-                Text("Type: \(place.infoType)")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.15))
-                    .foregroundStyle(.blue)
-                    .clipShape(Capsule())
-
-                HStack(spacing: 4) {
-
-                    Image(systemName: "location.fill")
-                        .foregroundStyle(.secondary)
-
-                    Text(place.locationDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                .padding(.top, 4)
-            }
-
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // PHOTO PROMPT AND CAMERA BUTTON
-
-            HStack {
-
-                VStack(alignment: .leading, spacing: 8) {
-
-                    Text("Take Photo Prompt")
-                        .font(.caption)
-                        .bold()
-                        .foregroundStyle(.secondary)
-
-                    Text(place.photoPrompt)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .padding()
-                        .frame(
-                            maxWidth: .infinity,
-                            alignment: .leading
-                        )
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(10)
-                }
-
-                Button {
-
-                    // Changes showCamera to true.
-                    // This triggers the camera picker sheet.
-                    showCamera = true
-
-                } label: {
-
-                    Image(systemName: "camera.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .padding(12)
-                        .background(Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-            }
-
-            .padding()
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            Spacer()
-        }
-
-        .padding()
-
-        // CAMERA PICKER
-
-        // .sheet(isPresented:) displays the camera picker
-        // whenever showCamera becomes true.
-        //
-        // $capturedImage and $showCamera pass Bindings to CameraPicker.
-        // This allows CameraPicker to update the original state variables.
-        .sheet(isPresented: $showCamera) {
-
-            CameraPicker(
-                image: $capturedImage,
-                isPresented: $showCamera
-            )
-        }
-
-        // SAVE CAPTURED IMAGE
-
-        // onChange observes changes to capturedImage.
-        // It runs when a new image is selected or captured.
-        //
-        // The two parameters are the old value and the new value.
-        .onChange(of: capturedImage) { _, newImage in
-
-            // guard let ensures that an image actually exists.
-            // If newImage is nil, the code below will not run.
-            guard let newImage else {
-                return
-            }
-
-            // Uses the user's current location if available.
-            // Otherwise, it uses the recommended place's coordinates.
-            let pinCoordinate = currentLocation ?? place.coordinate
-
-            // Creates a new CapturedMemory using the photo and location.
-            let memory = CapturedMemory(
-
-                placeName: place.name,
-
-                infoType: place.infoType,
-
-                coordinate: pinCoordinate,
-
-                image: newImage,
-
-                dateTaken: Date()
-            )
-
-            // Sends the newly created memory back to RecommendationTab.
-            // RecommendationTab then saves it locally and in TripStore.
-            onSaveMemory(memory)
-
-            // Closes the location detail view after saving.
-            dismiss()
-        }
-    }
+@Environment(\.dismiss) private var dismiss
+let place: Place
+let currentLocation: CLLocationCoordinate2D?
+var onSaveMemory: (CapturedMemory) -> Void
+@State private var detailCamera: MapCameraPosition
+@State private var selectedPhotoItem: PhotosPickerItem?
+@State private var verificationMessage: String?
+@State private var isVerificationError = false
+@State private var isCheckingMetadata = false
+private let maxAllowedDistanceMeters: Double = 500.0
+init(
+place: Place,
+currentLocation: CLLocationCoordinate2D?,
+onSaveMemory: @escaping (CapturedMemory) -> Void
+) {
+self.place = place
+self.currentLocation = currentLocation
+self.onSaveMemory = onSaveMemory
+_detailCamera = State(
+initialValue: .region(
+MKCoordinateRegion(
+center: place.coordinate,
+span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+)
+)
+)
 }
-
+var body: some View {
+VStack(spacing: 16) {
+HStack {
+Spacer()
+Button {
+dismiss()
+} label: {
+Image(systemName: "xmark")
+.font(.headline)
+.foregroundStyle(.primary)
+.padding(10)
+.background(Color(.systemGray5))
+.clipShape(RoundedRectangle(cornerRadius: 8))
+}
+}
+Map(position: $detailCamera) {
+Marker(place.name, coordinate: place.coordinate)
+UserAnnotation()
+MapCircle(center: place.coordinate, radius: maxAllowedDistanceMeters)
+.foregroundStyle(Color.blue.opacity(0.15))
+.stroke(Color.blue, lineWidth: 2)
+}
+.frame(height: 180)
+.clipShape(RoundedRectangle(cornerRadius: 16))
+VStack(alignment: .leading, spacing: 8) {
+Text(place.name)
+.font(.title2)
+.bold()
+Text("Type: (place.infoType)")
+.font(.subheadline)
+.fontWeight(.semibold)
+.padding(.horizontal, 10)
+.padding(.vertical, 4)
+.background(Color.blue.opacity(0.15))
+.foregroundStyle(.blue)
+.clipShape(Capsule())
+HStack(spacing: 4) {
+Image(systemName: "location.fill")
+.foregroundStyle(.secondary)
+Text(place.locationDescription)
+.font(.subheadline)
+.foregroundStyle(.secondary)
+}
+}
+.frame(maxWidth: .infinity, alignment: .leading)
+if let verificationMessage {
+HStack(spacing: 8) {
+Image(systemName: isVerificationError ? "xmark.octagon.fill" : "checkmark.shield.fill")
+.foregroundStyle(isVerificationError ? .red : .green)
+Text(verificationMessage)
+.font(.caption.weight(.medium))
+.foregroundStyle(isVerificationError ? .red : .green)
+Spacer()
+}
+.padding(10)
+.background(isVerificationError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
+.clipShape(RoundedRectangle(cornerRadius: 10))
+}
+HStack {
+VStack(alignment: .leading, spacing: 6) {
+Text("Take Photo Prompt")
+.font(.caption)
+.bold()
+.foregroundStyle(.secondary)
+Text(place.photoPrompt)
+.font(.subheadline)
+.foregroundStyle(.secondary)
+.multilineTextAlignment(.leading)
+.padding(10)
+.frame(maxWidth: .infinity, alignment: .leading)
+.background(Color.gray.opacity(0.1))
+.cornerRadius(10)
+}
+PhotosPicker(
+selection: $selectedPhotoItem,
+matching: .images,
+photoLibrary: .shared()
+) {
+if isCheckingMetadata {
+ProgressView()
+.tint(.white)
+.padding(14)
+.background(Color.blue)
+.clipShape(RoundedRectangle(cornerRadius: 12))
+} else {
+Image(systemName: "photo.badge.checkmark")
+.font(.title2)
+.foregroundStyle(.white)
+.padding(14)
+.background(Color.blue)
+.clipShape(RoundedRectangle(cornerRadius: 12))
+}
+}
+}
+.padding()
+.background(Color(.systemGray6))
+.clipShape(RoundedRectangle(cornerRadius: 12))
+Text("Select a photo taken at (place.name). We will scan its EXIF GPS metadata to confirm it was captured within 500m.")
+.font(.caption2)
+.foregroundStyle(.secondary)
+.multilineTextAlignment(.center)
+Spacer()
+}
+.padding()
+.onChange(of: selectedPhotoItem) { _, newItem in
+guard let newItem else { return }
+verifyAndSavePhoto(from: newItem)
+}
+}
+// MARK: - EXIF GPS Metadata Extraction & Verification
+private func verifyAndSavePhoto(from item: PhotosPickerItem) {
+isCheckingMetadata = true
+verificationMessage = nil
+Task {
+defer { isCheckingMetadata = false }
+guard let rawData = try? await item.loadTransferable(type: Data.self),
+let uiImage = UIImage(data: rawData) else {
+isVerificationError = true
+verificationMessage = "Could not load photo data. Please try another photo."
+return
+}
+guard let photoCoordinate = extractEXIFCoordinate(from: rawData) else {
+isVerificationError = true
+verificationMessage = "Rejected: No GPS location metadata found in this photo. Enable Camera Location Services on your iPhone."
+return
+}
+let photoLoc = CLLocation(
+latitude: photoCoordinate.latitude,
+longitude: photoCoordinate.longitude
+)
+let placeLoc = CLLocation(
+latitude: place.coordinate.latitude,
+longitude: place.coordinate.longitude
+)
+let distanceMeters = photoLoc.distance(from: placeLoc)
+guard distanceMeters <= maxAllowedDistanceMeters else {
+isVerificationError = true
+verificationMessage = "Rejected: Photo metadata shows it was taken (Int(distanceMeters))m away from (place.name) (must be within 500m)."
+return
+}
+isVerificationError = false
+verificationMessage = "Verified! Photo metadata confirmed (Int(distanceMeters))m from (place.name)."
+let memory = CapturedMemory(
+placeName: place.name,
+infoType: place.infoType,
+coordinate: photoCoordinate,
+image: uiImage,
+dateTaken: extractEXIFDate(from: rawData) ?? Date(),
+rawImageData: rawData
+)
+onSaveMemory(memory)
+dismiss()
+}
+}
+private func extractEXIFCoordinate(from data: Data) -> CLLocationCoordinate2D? {
+guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+let gps = properties[kCGImagePropertyGPSDictionary] as? [CFString: Any],
+let lat = gps[kCGImagePropertyGPSLatitude] as? Double,
+let latRef = gps[kCGImagePropertyGPSLatitudeRef] as? String,
+let lon = gps[kCGImagePropertyGPSLongitude] as? Double,
+let lonRef = gps[kCGImagePropertyGPSLongitudeRef] as? String else {
+return nil
+}
+let finalLat = (latRef == "S") ? -lat : lat
+let finalLon = (lonRef == "W") ? -lon : lon
+return CLLocationCoordinate2D(latitude: finalLat, longitude: finalLon)
+}
+private func extractEXIFDate(from data: Data) -> Date? {
+guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+let exif = properties[kCGImagePropertyExifDictionary] as? [CFString: Any],
+let dateString = exif[kCGImagePropertyExifDateTimeOriginal] as? String else {
+return nil
+}
+let formatter = DateFormatter()
+formatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
+return formatter.date(from: dateString)
+}
+}
 // MARK: - 11. MEMORY DETAIL VIEW
-
 struct MemoryDetailView: View {
-
-    // Allows this view to close itself.
-    @Environment(\.dismiss) private var dismiss
-
-    // Receives the selected photo memory.
-    let memory: CapturedMemory
-
-    var body: some View {
-
-        VStack(spacing: 16) {
-
-            HStack {
-
-                Text("Photo Memory")
-                    .font(.headline)
-
-                Spacer()
-
-                Button {
-
-                    dismiss()
-
-                } label: {
-
-                    Image(systemName: "xmark")
-                        .padding(8)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                }
-            }
-
-            // SAVED PHOTO
-
-            // UIImage is displayed using Image(uiImage:).
-            // resizable() allows the image to change size.
-            // scaledToFit() maintains its original proportions.
-            Image(uiImage: memory.image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 300)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            // MEMORY INFORMATION
-
-            VStack(alignment: .leading, spacing: 8) {
-
-                Text(memory.placeName)
-                    .font(.title2)
-                    .bold()
-
-                Text("Category: \(memory.infoType)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                // formatted() converts the Date into readable text.
-                // .abbreviated displays a shorter date format.
-                // .shortened displays a shorter time format.
-                Text(
-                    "Captured on \(memory.dateTaken.formatted(date: .abbreviated, time: .shortened))"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer()
-        }
-
-        .padding()
-    }
+@Environment(\.dismiss) private var dismiss
+let memory: CapturedMemory
+var body: some View {
+VStack(spacing: 16) {
+HStack {
+Text("Photo Memory")
+.font(.headline)
+Spacer()
+Button {
+dismiss()
+} label: {
+Image(systemName: "xmark")
+.padding(8)
+.background(Color(.systemGray5))
+.clipShape(Circle())
 }
-
-// MARK: - 12. CAMERA PICKER
-
-// UIViewControllerRepresentable allows UIKit view controllers
-// to be used inside a SwiftUI application.
-//
-// UIImagePickerController is a UIKit component that provides
-// the camera and photo library interface.
-struct CameraPicker: UIViewControllerRepresentable {
-
-    // @Binding allows this component to update the image variable
-    // that belongs to LocationDetailView.
-    @Binding var image: UIImage?
-
-    // Allows CameraPicker to control whether its sheet is displayed.
-    @Binding var isPresented: Bool
-
-    // Creates the UIKit image picker.
-    //
-    // makeUIViewController is required by UIViewControllerRepresentable.
-    // It is called when SwiftUI needs to create the UIKit component.
-    func makeUIViewController(
-        context: Context
-    ) -> UIImagePickerController {
-
-        let picker = UIImagePickerController()
-
-        // Checks whether the device has a working camera.
-        // If a camera is available, the camera interface is used.
-        // Otherwise, the photo library is used instead.
-        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-
-            picker.sourceType = .camera
-
-        } else {
-
-            picker.sourceType = .photoLibrary
-        }
-
-        // The delegate connects the image picker to our Coordinator.
-        // This allows us to receive callbacks when the user selects
-        // an image or cancels the picker.
-        picker.delegate = context.coordinator
-
-        return picker
-    }
-
-    // updateUIViewController is required by UIViewControllerRepresentable.
-    //
-    // SwiftUI calls this when the state changes and the UIKit
-    // component needs to be updated.
-    //
-    // This function is empty because no additional updates are needed.
-    func updateUIViewController(
-        _ uiViewController: UIImagePickerController,
-        context: Context
-    ) {
-    }
-
-    // Creates the Coordinator that connects UIKit callbacks to SwiftUI.
-    func makeCoordinator() -> Coordinator {
-
-        Coordinator(self)
-    }
-
-    // Coordinator acts as a bridge between UIKit and SwiftUI.
-    //
-    // UIKit uses delegate methods to notify us about user actions.
-    // The Coordinator receives those notifications and updates
-    // the SwiftUI @Binding variables.
-    class Coordinator: NSObject,
-                       UIImagePickerControllerDelegate,
-                       UINavigationControllerDelegate {
-
-        // Stores a reference to the parent CameraPicker.
-        let parent: CameraPicker
-
-        init(_ parent: CameraPicker) {
-
-            self.parent = parent
-        }
-
-        // Called when the user successfully selects or captures an image.
-        //
-        // info is a dictionary containing information about the selected photo.
-        // .originalImage retrieves the original UIImage.
-        func imagePickerController(
-            _ picker: UIImagePickerController,
-            didFinishPickingMediaWithInfo info: [
-                UIImagePickerController.InfoKey: Any
-            ]
-        ) {
-
-            // Checks whether the original image exists
-            // and converts it into a UIImage.
-            if let selectedImage = info[.originalImage] as? UIImage {
-
-                // Updates the image Binding.
-                // This automatically updates capturedImage
-                // in LocationDetailView.
-                parent.image = selectedImage
-            }
-
-            // Dismisses the camera picker.
-            parent.isPresented = false
-        }
-
-        // Called when the user cancels the camera or photo library.
-        func imagePickerControllerDidCancel(
-            _ picker: UIImagePickerController
-        ) {
-
-            // Closes the picker without saving an image.
-            parent.isPresented = false
-        }
-    }
 }
-
-// MARK: - 13. PREVIEW
-
-// #Preview allows developers to see how the view looks
-// inside Xcode without having to run the entire application.
-//
-// .environment(TripStore()) supplies the TripStore dependency
-// required by RecommendationTab.
+Image(uiImage: memory.image)
+.resizable()
+.scaledToFit()
+.frame(maxHeight: 300)
+.clipShape(RoundedRectangle(cornerRadius: 16))
+VStack(alignment: .leading, spacing: 8) {
+Text(memory.placeName)
+.font(.title2)
+.bold()
+Text("Category: (memory.infoType)")
+.font(.subheadline)
+.foregroundStyle(.secondary)
+Text("Captured on (memory.dateTaken.formatted(date: .abbreviated, time: .shortened))")
+.font(.caption)
+.foregroundStyle(.secondary)
+}
+.frame(maxWidth: .infinity, alignment: .leading)
+Spacer()
+}
+.padding()
+}
+}
+// MARK: - 12. PREVIEW
 #Preview {
-
-    RecommendationTab()
-        .environment(TripStore())
+RecommendationTab()
+.environment(TripStore())
 }
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 enum AppTab: Hashable {
@@ -11,12 +10,8 @@ struct ContentView: View {
 
     @State private var selectedTab: AppTab = .home
 
-    @EnvironmentObject var puzzleStore: PuzzleManager
-
     var body: some View {
-
         TabView(selection: $selectedTab) {
-
             Tab("Home", systemImage: "house", value: .home) {
                 RecommendationTab()
             }
@@ -25,16 +20,13 @@ struct ContentView: View {
                 MemoriesTab()
             }
 
-            Tab("Puzzles", systemImage: "map", value: .puzzleMap) {
-                NavigationStack {
-                    SingaporePuzzleMapView(
-                        puzzleStore: puzzleStore
-                    )
-                }
+            Tab("Puzzles", systemImage: "puzzlepiece.extension", value: .puzzleMap) {
+                PuzzleTab()
             }
         }
     }
 }
+
 
 #Preview {
     ContentView()
