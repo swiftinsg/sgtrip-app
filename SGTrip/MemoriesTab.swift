@@ -89,13 +89,24 @@ struct MemoryCard: View {
                     .font(.headline)
                     .lineLimit(2) // Limit to 2 lines, truncate with ellipsis if longer
 
+                // WHERE the photo was taken.
+                HStack {
+                    Image(systemName: "location.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    Text(memory.locationDescription)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                // WHEN the photo was taken, including the time.
                 HStack {
                     Image(systemName: "calendar")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 
-                    // Format the date to abbreviated date style (e.g., "Jan 15")
-                    Text(memory.date.formatted(date: .abbreviated, time: .omitted))
+                    Text(memory.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

@@ -15,11 +15,31 @@ import ImageIO
 /// Model for each saved memory/photo captured by the user.
 /// - Stores the place name, capture date, and raw image data (JPEG compression)
 /// - Conforms to Identifiable for use with SwiftUI Lists and ForEach
-struct SavedMemory: Identifiable {
-    let id = UUID()
+struct SavedMemory: Identifiable, Codable {
+    let id: UUID
     let placeName: String
+    let locationDescription: String
     let date: Date
+    let latitude: Double
+    let longitude: Double
     let imageData: Data
+
+    init(
+        placeName: String,
+        locationDescription: String,
+        date: Date,
+        latitude: Double,
+        longitude: Double,
+        imageData: Data
+    ) {
+        self.id = UUID()
+        self.placeName = placeName
+        self.locationDescription = locationDescription
+        self.date = date
+        self.latitude = latitude
+        self.longitude = longitude
+        self.imageData = imageData
+    }
 }
 
 /// Model for prompt tracking - tracks which places have been shown as daily prompts
@@ -74,6 +94,14 @@ class TripStore {
     /// - Grows as users take photos at recommended locations
     /// - Index 0 is the most recently captured memory
     var memories: [SavedMemory] = []
+
+    /// Where memories are stored on the device so they survive app restarts.
+    private var memoriesFileURL: URL {
+        FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask
+        )[0].appendingPathComponent("memories.json")
+    }
     
     /// Array of recommended places with prompt tracking state.
     /// - Initialized with 5 Singapore locations in the `init()` method
@@ -137,6 +165,9 @@ class TripStore {
                 coordinate: CLLocationCoordinate2D(latitude: 1.2805, longitude: 103.8711)
             )
         ]
+
+        // Restore any memories saved during previous app launches.
+        loadMemories()
     }
     
     // MARK: - Prompt Management
@@ -208,12 +239,44 @@ class TripStore {
     
     // MARK: - Memory Management
     
-    /// Adds a new saved memory to the store.
-    /// - Creates a new `SavedMemory` instance with the place name, current date, and image data
+    /// Adds a new saved memory to the store and saves it to the device.
+    /// - Keeps the place, address, capture time, GPS coordinates and image data
     /// - Inserts at index 0 so the most recent memory appears first in lists
-    func addMemory(placeName: String, imageData: Data) {
-        let newMemory = SavedMemory(placeName: placeName, date: Date(), imageData: imageData)
+    func addMemory(
+        placeName: String,
+        locationDescription: String,
+        date: Date,
+        latitude: Double,
+        longitude: Double,
+        imageData: Data
+    ) {
+        let newMemory = SavedMemory(
+            placeName: placeName,
+            locationDescription: locationDescription,
+            date: date,
+            latitude: latitude,
+            longitude: longitude,
+            imageData: imageData
+        )
         memories.insert(newMemory, at: 0)
+        saveMemories()
+    }
+
+    /// Loads previously saved memories from the device on app launch.
+    private func loadMemories() {
+        guard let data = try? Data(contentsOf: memoriesFileURL),
+              let saved = try? JSONDecoder().decode([SavedMemory].self, from: data) else {
+            return
+        }
+        memories = saved
+    }
+
+    /// Writes all memories to the device so they remain after closing the app.
+    private func saveMemories() {
+        guard let data = try? JSONEncoder().encode(memories) else {
+            return
+        }
+        try? data.write(to: memoriesFileURL, options: .atomic)
     }
     
     // MARK: - GPS Coordinate Extraction from Images
