@@ -1,5 +1,4 @@
 
-
 import SwiftUI
 import MapKit
 import CoreLocation
@@ -140,6 +139,25 @@ struct RecommendationTab: View {
     @State private var activeSheet: RecommendationSheet?
     @State private var savedMemories: [CapturedMemory] = []
     @State private var cameraPosition: MapCameraPosition = .region(defaultSingaporeRegion)
+    @State private var confirmationMessage: String?
+
+    private var completedPlaceNames: Set<String> {
+        Set(tripStore.memories.map { $0.placeName })
+    }
+
+    private func isPlaceCompleted(_ place: Place) -> Bool {
+        completedPlaceNames.contains(place.name)
+    }
+
+    private func completedPhoto(for place: Place) -> UIImage? {
+        if let localMemory = savedMemories.first(where: { $0.placeName == place.name }) {
+            return localMemory.image
+        }
+        if let storedMemory = tripStore.memories.first(where: { $0.placeName == place.name }) {
+            return UIImage(data: storedMemory.imageData)
+        }
+        return nil
+    }
 
     // MARK: Main Body
 
@@ -149,7 +167,26 @@ struct RecommendationTab: View {
                 tripMap
                     .ignoresSafeArea()
 
-                promptSheet
+                VStack(spacing: 12) {
+                    promptSheet
+
+                    // 1-second confirmation toast after sheet dismisses
+                    if let confirmationMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.white)
+
+                            Text(confirmationMessage)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color.green.gradient, in: Capsule())
+                        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $activeSheet) { sheet in
@@ -157,8 +194,12 @@ struct RecommendationTab: View {
                 case .place(let place):
                     LocationDetailView(
                         place: place,
+                        isCompleted: isPlaceCompleted(place),
+                        completedImage: completedPhoto(for: place),
                         currentLocation: locationManager.userLocation?.coordinate
                     ) { memory in
+                        guard !isPlaceCompleted(place) else { return }
+
                         savedMemories.insert(memory, at: 0)
 
                         let imageDataToSave = memory.rawImageData
@@ -174,6 +215,9 @@ struct RecommendationTab: View {
                                 imageData: imageData
                             )
                         }
+
+                        // Show 1-second confirmation after the sheet drops down
+                        showConfirmation("\(place.name) completed! Puzzle piece unlocked.")
                     }
 
                 case .memory(let memory):
@@ -184,6 +228,24 @@ struct RecommendationTab: View {
                 locationManager.startUpdatingLocation()
                 loadCurrentPrompt()
                 await midnightRefreshLoop()
+            }
+        }
+    }
+
+    private func showConfirmation(_ text: String) {
+        Task {
+            // Brief pause so the sheet finishes sliding down first
+            try? await Task.sleep(nanoseconds: 250_000_000)
+
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                confirmationMessage = text
+            }
+
+            // Keep visible for 1 second
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+            withAnimation(.easeOut(duration: 0.25)) {
+                confirmationMessage = nil
             }
         }
     }
@@ -207,72 +269,88 @@ struct RecommendationTab: View {
                 Button {
                     resetMapToSingapore()
                 } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.blue)
-                        .padding(5)
-                        .background(Color.blue.opacity(0.12), in: Circle())
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Reset map to Singapore")
-
-                if !didSkipPrompt {
-                    Button {
-                        skipCurrentPrompt()
-                    } label: {
-                        Label("Skip", systemImage: "forward.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.orange.opacity(0.12), in: Capsule())
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(currentPrompt == nil)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                if let prompt = currentPrompt {
-                    Text(prompt.name)
-                        .font(.headline)
-                        .fontWeight(.bold)
-
-                    Text(prompt.photoPrompt)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(alignment: .center, spacing: 8) {
-                        Label(prompt.locationDescription, systemImage: "location.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        Button {
-                            activeSheet = .place(prompt)
-                        } label: {
-                            Label("Take Photo", systemImage: "camera.fill")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    .padding(.top, 2)
-
-                    Divider()
-                        .padding(.vertical, 2)
-
-                    mapLegend
-                } else {
-                    Text("No prompts available")
-                        .font(.subheadline)
 
 
+Image(systemName: "arrow.counterclockwise")
+.font(.caption2.weight(.semibold))
+.foregroundStyle(.blue)
+.padding(5)
+.background(Color.blue.opacity(0.12), in: Circle())
+}
+.buttonStyle(.borderless)
+.accessibilityLabel("Reset map to Singapore")
+if !didSkipPrompt {
+Button {
+skipCurrentPrompt()
+} label: {
+Label("Skip", systemImage: "forward.fill")
+.font(.caption2.weight(.semibold))
+.foregroundStyle(.orange)
+.padding(.horizontal, 8)
+.padding(.vertical, 3)
+.background(Color.orange.opacity(0.12), in: Capsule())
+}
+.buttonStyle(.borderless)
+.disabled(currentPrompt == nil)
+}
+}
+VStack(alignment: .leading, spacing: 5) {
+if let prompt = currentPrompt {
+let completed = isPlaceCompleted(prompt)
+HStack {
+Text(prompt.name)
+.font(.headline)
+.fontWeight(.bold)
+if completed {
+Label("Completed", systemImage: "checkmark.circle.fill")
+.font(.caption2.weight(.semibold))
+.foregroundStyle(.green)
+.padding(.horizontal, 8)
+.padding(.vertical, 3)
+.background(Color.green.opacity(0.15), in: Capsule())
+}
+}
+Text(prompt.photoPrompt)
+.font(.caption)
+.foregroundStyle(.secondary)
+.lineLimit(2)
+.fixedSize(horizontal: false, vertical: true)
+HStack(alignment: .center, spacing: 8) {
+Label(prompt.locationDescription, systemImage: "location.fill")
+.font(.caption2)
+.foregroundStyle(.secondary)
+.lineLimit(1)
+Spacer()
+if completed {
+Button {
+activeSheet = .place(prompt)
+} label: {
+Label("View Photo", systemImage: "checkmark.circle.fill")
+.font(.caption2)
+.fontWeight(.semibold)
+}
+.buttonStyle(.bordered)
+.tint(.green)
+.controlSize(.small)
+} else {
+Button {
+activeSheet = .place(prompt)
+} label: {
+Label("Take Photo", systemImage: "camera.fill")
+.font(.caption2)
+.fontWeight(.semibold)
+}
+.buttonStyle(.borderedProminent)
+.controlSize(.small)
+}
+}
+.padding(.top, 2)
+Divider()
+.padding(.vertical, 2)
+mapLegend
+} else {
+Text("No prompts available")
+.font(.subheadline)
 .fontWeight(.semibold)
 Text("Please check back for more photo challenges.")
 .font(.caption)
@@ -319,13 +397,14 @@ Label("Visited", systemImage: "mappin.circle.fill")
 private var tripMap: some View {
 Map(position: $cameraPosition) {
 UserAnnotation()
-// Red Pins: Recommended Places
+// Red Pins: Recommended Places (turns green checkmark badge when completed)
 ForEach(places) { place in
+let completed = isPlaceCompleted(place)
 Annotation("", coordinate: place.coordinate, anchor: .bottom) {
 VStack(spacing: 2) {
-Image(systemName: "mappin.circle.fill")
+Image(systemName: completed ? "checkmark.circle.fill" : "mappin.circle.fill")
 .font(.title2)
-.foregroundStyle(.red)
+.foregroundStyle(completed ? .green : .red)
 .background(Color.white)
 .clipShape(Circle())
 Text(place.name)
@@ -400,10 +479,9 @@ cameraPosition = .region(Self.defaultSingaporeRegion)
 }
 }
 private func loadCurrentPrompt() {
-guard let recommendedPlace = tripStore.getNextPrompt() else {
-currentPrompt = places.first
-return
-}
+let incompletePlaces = places.filter { !isPlaceCompleted($0) }
+if let recommendedPlace = tripStore.getNextPrompt(),
+!completedPlaceNames.contains(recommendedPlace.name) {
 currentPrompt = Place(
 name: recommendedPlace.name,
 infoType: recommendedPlace.infoType,
@@ -411,15 +489,21 @@ locationDescription: recommendedPlace.locationDescription,
 photoPrompt: recommendedPlace.photoPrompt,
 coordinate: recommendedPlace.coordinate
 )
+} else {
+currentPrompt = incompletePlaces.first ?? places.first
+}
 }
 private func skipCurrentPrompt() {
 didSkipPrompt = true
 tripStore.skipPrompt()
-let remainingPlaces = places.filter { $0.name != currentPrompt?.name }
-if let nextPlace = remainingPlaces.randomElement() {
-currentPrompt = nextPlace
+let uncompletedRemaining = places.filter {
+$0.name != currentPrompt?.name && !isPlaceCompleted($0)
+}
+if let nextUncompleted = uncompletedRemaining.randomElement() {
+currentPrompt = nextUncompleted
 } else {
-loadCurrentPrompt()
+let anyRemaining = places.filter { $0.name != currentPrompt?.name }
+currentPrompt = anyRemaining.randomElement() ?? currentPrompt
 }
 }
 // MARK: - 8. DAILY MIDNIGHT RESET
@@ -448,10 +532,12 @@ private func extractCoordinate(_ memory: SavedMemory) -> CLLocationCoordinate2D?
 tripStore.extractCoordinate(from: memory.imageData)
 }
 }
-// MARK: - 10. LOCATION DETAIL VIEW (EXIF METADATA VERIFICATION)
+// MARK: - 10. LOCATION DETAIL VIEW (EXIF METADATA VERIFICATION + COMPLETION PHOTO)
 struct LocationDetailView: View {
 @Environment(\.dismiss) private var dismiss
 let place: Place
+let isCompleted: Bool
+let completedImage: UIImage?
 let currentLocation: CLLocationCoordinate2D?
 var onSaveMemory: (CapturedMemory) -> Void
 @State private var detailCamera: MapCameraPosition
@@ -462,10 +548,14 @@ var onSaveMemory: (CapturedMemory) -> Void
 private let maxAllowedDistanceMeters: Double = 500.0
 init(
 place: Place,
+isCompleted: Bool,
+completedImage: UIImage?,
 currentLocation: CLLocationCoordinate2D?,
 onSaveMemory: @escaping (CapturedMemory) -> Void
 ) {
 self.place = place
+self.isCompleted = isCompleted
+self.completedImage = completedImage
 self.currentLocation = currentLocation
 self.onSaveMemory = onSaveMemory
 _detailCamera = State(
@@ -492,6 +582,25 @@ Image(systemName: "xmark")
 .clipShape(RoundedRectangle(cornerRadius: 8))
 }
 }
+if isCompleted, let completedImage {
+ZStack(alignment: .bottomLeading) {
+Image(uiImage: completedImage)
+.resizable()
+.scaledToFill()
+.frame(maxWidth: .infinity)
+.frame(height: 200)
+.clipped()
+Label("Captured Memory", systemImage: "checkmark.seal.fill")
+.font(.caption.weight(.semibold))
+.foregroundStyle(.white)
+.padding(.horizontal, 10)
+.padding(.vertical, 5)
+.background(.ultraThinMaterial)
+.clipShape(Capsule())
+.padding(10)
+}
+.clipShape(RoundedRectangle(cornerRadius: 16))
+} else {
 Map(position: $detailCamera) {
 Marker(place.name, coordinate: place.coordinate)
 UserAnnotation()
@@ -501,18 +610,22 @@ MapCircle(center: place.coordinate, radius: maxAllowedDistanceMeters)
 }
 .frame(height: 180)
 .clipShape(RoundedRectangle(cornerRadius: 16))
+}
 VStack(alignment: .leading, spacing: 8) {
+HStack {
 Text(place.name)
 .font(.title2)
 .bold()
-Text("Type: (place.infoType)")
-.font(.subheadline)
-.fontWeight(.semibold)
+if isCompleted {
+Label("Completed", systemImage: "checkmark.seal.fill")
+.font(.caption.weight(.semibold))
+.foregroundStyle(.green)
 .padding(.horizontal, 10)
 .padding(.vertical, 4)
-.background(Color.blue.opacity(0.15))
-.foregroundStyle(.blue)
+.background(Color.green.opacity(0.15))
 .clipShape(Capsule())
+}
+}
 HStack(spacing: 4) {
 Image(systemName: "location.fill")
 .foregroundStyle(.secondary)
@@ -522,7 +635,19 @@ Text(place.locationDescription)
 }
 }
 .frame(maxWidth: .infinity, alignment: .leading)
-if let verificationMessage {
+if isCompleted {
+HStack(spacing: 8) {
+Image(systemName: "checkmark.circle.fill")
+.foregroundStyle(.green)
+Text("Challenge Completed! You have already unlocked the (place.name) jigsaw piece.")
+.font(.caption.weight(.medium))
+.foregroundStyle(.green)
+Spacer()
+}
+.padding(10)
+.background(Color.green.opacity(0.12))
+.clipShape(RoundedRectangle(cornerRadius: 10))
+} else if let verificationMessage {
 HStack(spacing: 8) {
 Image(systemName: isVerificationError ? "xmark.octagon.fill" : "checkmark.shield.fill")
 .foregroundStyle(isVerificationError ? .red : .green)
@@ -550,6 +675,14 @@ Text(place.photoPrompt)
 .background(Color.gray.opacity(0.1))
 .cornerRadius(10)
 }
+if isCompleted {
+Image(systemName: "checkmark.circle.fill")
+.font(.title2)
+.foregroundStyle(.white)
+.padding(14)
+.background(Color.green)
+.clipShape(RoundedRectangle(cornerRadius: 12))
+} else {
 PhotosPicker(
 selection: $selectedPhotoItem,
 matching: .images,
@@ -571,10 +704,15 @@ Image(systemName: "photo.badge.checkmark")
 }
 }
 }
+}
 .padding()
 .background(Color(.systemGray6))
 .clipShape(RoundedRectangle(cornerRadius: 12))
-Text("Select a photo taken at (place.name). We will scan its EXIF GPS metadata to confirm it was captured within 500m.")
+Text(
+isCompleted
+? "This challenge is complete. Your photo is also saved in Memories and your SG Puzzle!"
+: "Select a photo taken at (place.name). We will scan its EXIF GPS metadata to confirm it was captured within 500m."
+)
 .font(.caption2)
 .foregroundStyle(.secondary)
 .multilineTextAlignment(.center)
@@ -582,7 +720,7 @@ Spacer()
 }
 .padding()
 .onChange(of: selectedPhotoItem) { _, newItem in
-guard let newItem else { return }
+guard let newItem, !isCompleted else { return }
 verifyAndSavePhoto(from: newItem)
 }
 }
@@ -592,6 +730,7 @@ isCheckingMetadata = true
 verificationMessage = nil
 Task {
 defer { isCheckingMetadata = false }
+guard !isCompleted else { return }
 guard let rawData = try? await item.loadTransferable(type: Data.self),
 let uiImage = UIImage(data: rawData) else {
 isVerificationError = true
@@ -685,9 +824,6 @@ VStack(alignment: .leading, spacing: 8) {
 Text(memory.placeName)
 .font(.title2)
 .bold()
-Text("Category: (memory.infoType)")
-.font(.subheadline)
-.foregroundStyle(.secondary)
 Text("Captured on (memory.dateTaken.formatted(date: .abbreviated, time: .shortened))")
 .font(.caption)
 .foregroundStyle(.secondary)
@@ -703,7 +839,6 @@ Spacer()
 RecommendationTab()
 .environment(TripStore())
 }
-
 
 
 
