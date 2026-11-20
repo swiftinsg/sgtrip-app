@@ -1,0 +1,65 @@
+{
+  "fill" : {
+    "automatic-gradient" : "display-p3:0.69427,0.96783,0.68547,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : "system-light",
+          "image-name" : "Vector.svg",
+          "name" : "Vector"
+        },
+        {
+          "fill" : "system-light",
+          "image-name" : "Vector-2.svg",
+          "name" : "Vector-2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              194,
+              250
+            ]
+          }
+        },
+        {
+          "fill" : "system-light",
+          "image-name" : "Vector-1.svg",
+          "name" : "Vector-1",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -0.2999991033951801,
+              -61.000000112807015
+            ]
+          }
+        },
+        {
+          "image-name" : "Ellipse 6.svg",
+          "name" : "Ellipse 6",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              193.55061641578914,
+              231
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
