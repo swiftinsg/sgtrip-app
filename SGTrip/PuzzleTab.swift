@@ -1,32 +1,71 @@
 
 import SwiftUI
 import UIKit
+import Photos
 
-// MARK: - 1. JIGSAW PIECE MODEL
+// MARK: - 1. REGION & JIGSAW MODELS
 
-struct PuzzleSlot: Identifiable {
-    let id: Int // 0...9 (5 rows x 2 cols = 10 pieces)
-    let placeName: String
-    let row: Int
-    let col: Int
+enum SingaporeRegion: String, CaseIterable, Identifiable {
+    case central = "Central"
+    case north = "North"
+    case east = "East"
+    case south = "South"
+    case west = "West"
+
+    var id: String { rawValue }
+
+    var iconName: String {
+        switch self {
+        case .central: return "building.2.fill"
+        case .north: return "leaf.fill"
+        case .east: return "beach.umbrella.fill"
+        case .south: return "water.waves"
+        case .west: return "cpu.fill"
+        }
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .central: return .orange
+        case .north: return .green
+        case .east: return .teal
+        case .south: return .blue
+        case .west: return .purple
+        }
+    }
+
+    var placeNames: [String] {
+        switch self {
+        case .central:
+            return ["Burma Social", "Chinatown Food Street", "Tekka Centre"]
+        case .north:
+            return ["Kampong Lorong Buangkok", "Thomson Nature Park"]
+        case .east:
+            return ["Katong Shophouses", "East Coast Park"]
+        case .south:
+            return ["Marina Barrage"]
+        case .west:
+            return ["Haw Par Villa", "Innovis"]
+        }
+    }
 }
 
 // MARK: - 2. CUSTOM JIGSAW SHAPE
 
 struct JigsawPieceShape: Shape {
-    let row: Int
-    let col: Int
-    let totalRows: Int
-    let totalCols: Int
+    let hasTopTab: Bool
+    let hasRightTab: Bool
+    let hasBottomTab: Bool
+    let hasLeftTab: Bool
     let isAssembled: Bool
 
     func path(in rect: CGRect) -> Path {
-        if isAssembled {
+        if isAssembled || (!hasTopTab && !hasRightTab && !hasBottomTab && !hasLeftTab) {
             return Path(rect)
         }
 
         var path = Path()
-        let tabSize = min(rect.width, rect.height) * 0.16
+        let tabSize = min(rect.width, rect.height) * 0.12
 
         let topEdge = rect.minY
         let bottomEdge = rect.maxY
@@ -38,7 +77,7 @@ struct JigsawPieceShape: Shape {
         path.move(to: CGPoint(x: leftEdge, y: topEdge))
 
         // TOP EDGE
-        if row > 0 {
+        if hasTopTab {
             path.addLine(to: CGPoint(x: midX - tabSize, y: topEdge))
             path.addArc(
                 center: CGPoint(x: midX, y: topEdge),
@@ -51,7 +90,7 @@ struct JigsawPieceShape: Shape {
         path.addLine(to: CGPoint(x: rightEdge, y: topEdge))
 
         // RIGHT EDGE
-        if col < totalCols - 1 {
+        if hasRightTab {
             path.addLine(to: CGPoint(x: rightEdge, y: midY - tabSize))
             path.addArc(
                 center: CGPoint(x: rightEdge, y: midY),
@@ -64,7 +103,7 @@ struct JigsawPieceShape: Shape {
         path.addLine(to: CGPoint(x: rightEdge, y: bottomEdge))
 
         // BOTTOM EDGE
-        if row < totalRows - 1 {
+        if hasBottomTab {
             path.addLine(to: CGPoint(x: midX + tabSize, y: bottomEdge))
             path.addArc(
                 center: CGPoint(x: midX, y: bottomEdge),
@@ -77,7 +116,7 @@ struct JigsawPieceShape: Shape {
         path.addLine(to: CGPoint(x: leftEdge, y: bottomEdge))
 
         // LEFT EDGE
-        if col > 0 {
+        if hasLeftTab {
             path.addLine(to: CGPoint(x: leftEdge, y: midY + tabSize))
             path.addArc(
                 center: CGPoint(x: leftEdge, y: midY),
@@ -100,26 +139,10 @@ struct PuzzleTab: View {
 
     @Environment(TripStore.self) private var tripStore
 
-    @State private var placedPieceIDs: Set<Int> = []
-    @State private var renderedWallpaper: UIImage?
-    @State private var showSavedAlert = false
-
-    private let totalRows = 5
-    private let totalCols = 2
-
-    // All 10 places arranged into a 5x2 grid inside the same rectangle area
-    private let slots: [PuzzleSlot] = [
-        PuzzleSlot(id: 0, placeName: "Haw Par Villa", row: 0, col: 0),
-        PuzzleSlot(id: 1, placeName: "Burma Social", row: 0, col: 1),
-        PuzzleSlot(id: 2, placeName: "Chinatown Food Street", row: 1, col: 0),
-        PuzzleSlot(id: 3, placeName: "Tekka Centre", row: 1, col: 1),
-        PuzzleSlot(id: 4, placeName: "Marina Barrage", row: 2, col: 0),
-        PuzzleSlot(id: 5, placeName: "Katong Shophouses", row: 2, col: 1),
-        PuzzleSlot(id: 6, placeName: "Kampong Lorong Buangkok", row: 3, col: 0),
-        PuzzleSlot(id: 7, placeName: "East Coast Park", row: 3, col: 1),
-        PuzzleSlot(id: 8, placeName: "Thomson Nature Park", row: 4, col: 0),
-        PuzzleSlot(id: 9, placeName: "Innovis", row: 4, col: 1)
-    ]
+    @State private var selectedRegion: SingaporeRegion = .central
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var showAlert = false
 
     private var unlockedPhotos: [String: UIImage] {
         var dict: [String: UIImage] = [:]
@@ -132,294 +155,349 @@ struct PuzzleTab: View {
         return dict
     }
 
-    private var unlockedCount: Int {
-        slots.filter { unlockedPhotos[$0.placeName] != nil }.count
-    }
-
-    private var isPuzzleComplete: Bool {
-        placedPieceIDs.count == slots.count && unlockedCount == slots.count
-    }
-
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    headerSection
+            VStack(spacing: 10) {
+                // COMPACT TOP REGION SELECTOR BAR
+                regionSelectorBar
+                    .padding(.top, 4)
 
-                    puzzleBoard
-                        .padding(.horizontal, 16)
-
-                    if !isPuzzleComplete {
-                        pieceTraySection
-                    }
-
-                    if isPuzzleComplete {
-                        wallpaperActionSection
+                // FULL-SCREEN SWIPEABLE REGIONAL PUZZLE PAGER
+                TabView(selection: $selectedRegion) {
+                    ForEach(SingaporeRegion.allCases) { region in
+                        FullScreenRegionalPuzzlePage(
+                            region: region,
+                            unlockedPhotos: unlockedPhotos,
+                            onDownload: {
+                                downloadWallpaper(for: region)
+                            }
+                        )
+                        .tag(region)
                     }
                 }
-                .padding(.vertical)
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .navigationTitle("SG Puzzle")
-            .onAppear {
-                syncUnlockedPieces()
-            }
-            .onChange(of: tripStore.memories.count) { _, _ in
-                syncUnlockedPieces()
-            }
-            .alert("Wallpaper Saved!", isPresented: $showSavedAlert) {
-                Button("Awesome", role: .cancel) {}
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("SG Puzzles")
+            .navigationBarTitleDisplayMode(.inline)
+            .statusBarHidden(true)
+            .alert(alertTitle, isPresented: $showAlert) {
+                Button("OK", role: .cancel) {}
             } message: {
-                Text("Your completed Singapore photo collage has been saved to your Photos.")
+                Text(alertMessage)
             }
         }
     }
 
-    // MARK: - HEADER
+    // MARK: - COMPACT REGION SELECTOR BAR
 
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("\(unlockedCount) / \(slots.count) Pieces Unlocked", systemImage: "puzzlepiece.extension.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.orange)
+    private var regionSelectorBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(SingaporeRegion.allCases) { region in
+                    let isSelected = selectedRegion == region
+                    let unlocked = region.placeNames.filter { unlockedPhotos[$0] != nil }.count
+                    let total = region.placeNames.count
+                    let isDone = unlocked == total
 
-                Spacer()
-
-                if unlockedCount > placedPieceIDs.count {
-                    Button("Snap All") {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                            for slot in slots where unlockedPhotos[slot.placeName] != nil {
-                                placedPieceIDs.insert(slot.id)
-                            }
-                            generateWallpaperImage()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            selectedRegion = region
                         }
-                    }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: isDone ? "checkmark.circle.fill" : region.iconName)
+                                .font(.caption2)
 
-            ProgressView(value: Double(unlockedCount), total: Double(slots.count))
-                .tint(.orange)
+                            Text(region.rawValue)
+                                .font(.caption.weight(.semibold))
 
-            Text(
-                isPuzzleComplete
-                ? "All 10 Singapore challenges complete! Your jigsaw has merged into a wallpaper."
-                : "Complete photo challenges on the Map tab to unlock jigsaw pieces, then tap each piece to place it."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 5x2 JIGSAW RECTANGLE BOARD (SAME COMPACT AREA)
-
-    private var puzzleBoard: some View {
-        let spacing: CGFloat = isPuzzleComplete ? 0 : 3
-
-        return VStack(spacing: spacing) {
-            ForEach(0..<totalRows, id: \.self) { row in
-                HStack(spacing: spacing) {
-                    ForEach(0..<totalCols, id: \.self) { col in
-                        let index = row * totalCols + col
-                        let slot = slots[index]
-                        let photo = unlockedPhotos[slot.placeName]
-                        let isPlaced = placedPieceIDs.contains(slot.id) && photo != nil
-
-                        ZStack {
-                            if let photo, isPlaced {
-                                Image(uiImage: photo)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                                    .clipped()
-                            } else {
-                                Color(.systemGray5)
-                                HStack(spacing: 6) {
-                                    Image(systemName: photo != nil ? "puzzlepiece.fill" : "lock.fill")
-                                        .font(.subheadline)
-                                        .foregroundStyle(photo != nil ? .orange : .secondary)
-
-                                    Text(slot.placeName)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                                .padding(.horizontal, 8)
-                            }
+                            Text(String(unlocked) + "/" + String(total))
+                                .font(.caption2.weight(.bold))
+                                .opacity(0.85)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 82)
-                        .clipShape(
-                            JigsawPieceShape(
-                                row: row,
-                                col: col,
-                                totalRows: totalRows,
-                                totalCols: totalCols,
-                                isAssembled: isPuzzleComplete
-                            )
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            isSelected ? region.accentColor : Color(.secondarySystemGroupedBackground),
+                            in: Capsule()
                         )
                         .overlay(
-                            JigsawPieceShape(
-                                row: row,
-                                col: col,
-                                totalRows: totalRows,
-                                totalCols: totalCols,
-                                isAssembled: isPuzzleComplete
-                            )
-                            .stroke(
-                                isPuzzleComplete ? Color.clear : Color.white.opacity(0.6),
-                                lineWidth: 1.5
-                            )
+                            Capsule()
+                                .stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
                         )
-                        .onTapGesture {
-                            if photo != nil && !isPlaced {
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
 
-withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-placedPieceIDs.insert(slot.id)
-if isPuzzleComplete {
-generateWallpaperImage()
-}
-}
-}
-}
-}
-}
-}
-}
-.padding(isPuzzleComplete ? 0 : 8)
-.background(Color(.secondarySystemBackground))
-.clipShape(RoundedRectangle(cornerRadius: 18))
-.shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-.animation(.easeInOut(duration: 0.4), value: isPuzzleComplete)
-}
-// MARK: - UNPLACED PIECES TRAY
-private var pieceTraySection: some View {
-let unplacedSlots = slots.filter { slot in
-unlockedPhotos[slot.placeName] != nil && !placedPieceIDs.contains(slot.id)
-}
-return Group {
-if !unplacedSlots.isEmpty {
-VStack(alignment: .leading, spacing: 8) {
-Text("Tap a Piece to Snap It In")
-.font(.caption.weight(.bold))
-.foregroundStyle(.secondary)
-.padding(.horizontal, 16)
-ScrollView(.horizontal, showsIndicators: false) {
-HStack(spacing: 12) {
-ForEach(unplacedSlots) { slot in
-if let photo = unlockedPhotos[slot.placeName] {
-Button {
-withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-placedPieceIDs.insert(slot.id)
-if isPuzzleComplete {
-generateWallpaperImage()
-}
-}
-} label: {
-VStack(spacing: 4) {
-Image(uiImage: photo)
-.resizable()
-.scaledToFill()
-.frame(width: 64, height: 64)
-.clipShape(
-JigsawPieceShape(
-row: slot.row,
-col: slot.col,
-totalRows: totalRows,
-totalCols: totalCols,
-isAssembled: false
-)
-)
-Text(slot.placeName)
-.font(.caption2)
-.foregroundStyle(.primary)
-.lineLimit(1)
-.frame(width: 72)
-}
-}
-.buttonStyle(.plain)
-}
-}
-}
-.padding(.horizontal, 16)
-}
-}
-}
-}
-}
-// MARK: - WALLPAPER EXPORT SECTION
-private var wallpaperActionSection: some View {
-VStack(spacing: 10) {
-Button {
-generateWallpaperImage()
-if let wallpaper = renderedWallpaper {
+    // MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532)
+
+    @MainActor
+    private func downloadWallpaper(for region: SingaporeRegion) {
+        let places = region.placeNames
+        let wallpaperWidth: CGFloat = 1170
+        let wallpaperHeight: CGFloat = 2532
+
+        let wallpaperView = Group {
+            if places.count == 3 {
+                // 3-piece layout: Top half hero + Bottom 2 side-by-side
+                VStack(spacing: 0) {
+                    if let photo0 = unlockedPhotos[places[0]] {
+                        wallpaperPhotoTile(photo: photo0, width: wallpaperWidth, height: wallpaperHeight * 0.5)
+                    }
+                    HStack(spacing: 0) {
+                        if let photo1 = unlockedPhotos[places[1]] {
+                            wallpaperPhotoTile(photo: photo1, width: wallpaperWidth * 0.5, height: wallpaperHeight * 0.5)
+                        }
+                        if let photo2 = unlockedPhotos[places[2]] {
+                            wallpaperPhotoTile(photo: photo2, width: wallpaperWidth * 0.5, height: wallpaperHeight * 0.5)
+                        }
+                    }
+                }
+            } else if places.count == 2 {
+                // 2-piece layout: Top half + Bottom half
+                VStack(spacing: 0) {
+                    ForEach(0..<2, id: \.self) { index in
+                        if let photo = unlockedPhotos[places[index]] {
+                            wallpaperPhotoTile(photo: photo, width: wallpaperWidth, height: wallpaperHeight * 0.5)
+                        }
+                    }
+                }
+            } else if let firstPlace = places.first, let photo = unlockedPhotos[firstPlace] {
+                // 1-piece layout: Full screen
+                wallpaperPhotoTile(photo: photo, width: wallpaperWidth, height: wallpaperHeight)
+            }
+        }
+        .frame(width: wallpaperWidth, height: wallpaperHeight)
+
+        let renderer = ImageRenderer(content: wallpaperView)
+        renderer.scale = 1.0
+
+        guard let wallpaper = renderer.uiImage else { return }
+
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            DispatchQueue.main.async {
+                switch status {
+                case .authorized, .limited:
+
 UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
-showSavedAlert = true
-}
-} label: {
-Label("Save as iPhone Wallpaper", systemImage: "square.and.arrow.down.fill")
-.font(.headline)
-.frame(maxWidth: .infinity)
-.padding(.vertical, 6)
-}
-.buttonStyle(.borderedProminent)
-.tint(.orange)
-if let wallpaper = renderedWallpaper {
-ShareLink(
-item: Image(uiImage: wallpaper),
-preview: SharePreview("My SGTrip Wallpaper", image: Image(uiImage: wallpaper))
-) {
-Label("Share Wallpaper", systemImage: "square.and.arrow.up")
-.font(.subheadline.weight(.semibold))
-.frame(maxWidth: .infinity)
-.padding(.vertical, 6)
-}
-.buttonStyle(.bordered)
+alertTitle = region.rawValue + " Wallpaper Downloaded!"
+alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
+showAlert = true
+case .denied, .restricted:
+alertTitle = "Photo Access Needed"
+alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
+showAlert = true
+default:
+break
 }
 }
-.padding(.horizontal, 16)
-}
-// MARK: - HELPERS
-private func syncUnlockedPieces() {
-if isPuzzleComplete {
-generateWallpaperImage()
 }
 }
-@MainActor
-private func generateWallpaperImage() {
-let wallpaperView = VStack(spacing: 0) {
-ForEach(0..<totalRows, id: \.self) { row in
-HStack(spacing: 0) {
-ForEach(0..<totalCols, id: \.self) { col in
-let slot = slots[row * totalCols + col]
-if let photo = unlockedPhotos[slot.placeName] {
+@ViewBuilder
+private func wallpaperPhotoTile(photo: UIImage, width: CGFloat, height: CGFloat) -> some View {
+ZStack {
 Image(uiImage: photo)
 .resizable()
 .scaledToFill()
-.frame(width: 1170 / 2, height: 2532 / 5)
+.frame(width: width, height: height)
+.blur(radius: 36)
+.overlay(Color.black.opacity(0.25))
+Image(uiImage: photo)
+.resizable()
+.scaledToFit()
+.frame(width: width, height: height)
+}
+.frame(width: width, height: height)
 .clipped()
 }
 }
+// MARK: - 4. FULL-SCREEN REGIONAL PUZZLE PAGE
+struct FullScreenRegionalPuzzlePage: View {
+let region: SingaporeRegion
+let unlockedPhotos: [String: UIImage]
+let onDownload: () -> Void
+private var places: [String] { region.placeNames }
+private var unlockedCount: Int {
+places.filter { unlockedPhotos[$0] != nil }.count
+}
+private var isComplete: Bool {
+unlockedCount == places.count && !places.isEmpty
+}
+var body: some View {
+VStack(spacing: 12) {
+// FULL-SCREEN PROPORTIONAL PUZZLE CANVAS
+GeometryReader { geo in
+let spacing: CGFloat = isComplete ? 0 : 4
+let boardWidth = geo.size.width
+let boardHeight = geo.size.height
+Group {
+if places.count == 3 {
+// 3-Piece Balanced Collage: Top Wide Piece + 2 Bottom Side-by-Side Pieces
+let topHeight = (boardHeight - spacing) * 0.5
+let bottomHeight = (boardHeight - spacing) * 0.5
+let halfWidth = (boardWidth - spacing) * 0.5
+VStack(spacing: spacing) {
+puzzleTile(
+placeName: places[0],
+width: boardWidth,
+height: topHeight,
+topTab: false,
+rightTab: false,
+bottomTab: true,
+leftTab: false
+)
+HStack(spacing: spacing) {
+puzzleTile(
+placeName: places[1],
+width: halfWidth,
+height: bottomHeight,
+topTab: true,
+rightTab: true,
+bottomTab: false,
+leftTab: false
+)
+puzzleTile(
+placeName: places[2],
+width: halfWidth,
+height: bottomHeight,
+topTab: true,
+rightTab: false,
+bottomTab: false,
+leftTab: true
+)
+}
+}
+} else if places.count == 2 {
+// 2-Piece Balanced Collage: Top & Bottom Halves
+let halfHeight = (boardHeight - spacing) * 0.5
+VStack(spacing: spacing) {
+puzzleTile(
+placeName: places[0],
+width: boardWidth,
+height: halfHeight,
+topTab: false,
+rightTab: false,
+bottomTab: true,
+leftTab: false
+)
+puzzleTile(
+placeName: places[1],
+width: boardWidth,
+height: halfHeight,
+topTab: true,
+rightTab: false,
+bottomTab: false,
+leftTab: false
+)
+}
+} else if let singlePlace = places.first {
+// 1-Piece Full-Screen Wallpaper
+puzzleTile(
+placeName: singlePlace,
+width: boardWidth,
+height: boardHeight,
+topTab: false,
+rightTab: false,
+bottomTab: false,
+leftTab: false
+)
+}
+}
+.clipShape(RoundedRectangle(cornerRadius: 24))
+.overlay(
+RoundedRectangle(cornerRadius: 24)
+.stroke(Color.primary.opacity(0.12), lineWidth: 1)
+)
+.shadow(color: .black.opacity(0.14), radius: 10, y: 4)
+.animation(.easeInOut(duration: 0.35), value: isComplete)
+}
+.padding(.horizontal, 16)
+// DOWNLOAD BUTTON (APPEARS ONLY ONCE FINISHED)
+if isComplete {
+Button(action: onDownload) {
+Label(
+"Download " + region.rawValue + " Wallpaper",
+systemImage: "arrow.down.to.line.circle.fill"
+)
+.font(.headline)
+.frame(maxWidth: .infinity)
+.padding(.vertical, 8)
+}
+.buttonStyle(.borderedProminent)
+.tint(region.accentColor)
+.padding(.horizontal, 16)
+.transition(.move(edge: .bottom).combined(with: .opacity))
+}
+}
+.padding(.bottom, 12)
+}
+// MARK: - INDIVIDUAL PUZZLE TILE
+private func puzzleTile(
+placeName: String,
+width: CGFloat,
+height: CGFloat,
+topTab: Bool,
+rightTab: Bool,
+bottomTab: Bool,
+leftTab: Bool
+) -> some View {
+let photo = unlockedPhotos[placeName]
+let shape = JigsawPieceShape(
+hasTopTab: topTab,
+hasRightTab: rightTab,
+hasBottomTab: bottomTab,
+hasLeftTab: leftTab,
+isAssembled: isComplete
+)
+return ZStack {
+if let photo {
+ZStack {
+Image(uiImage: photo)
+.resizable()
+.scaledToFill()
+.frame(width: width, height: height)
+.blur(radius: 18)
+.overlay(Color.black.opacity(0.25))
+Image(uiImage: photo)
+.resizable()
+.scaledToFit()
+.frame(width: width, height: height)
+}
+.clipped()
+} else {
+Color(.secondarySystemGroupedBackground)
+VStack(spacing: 8) {
+Image(systemName: "lock.fill")
+.font(.title3)
+.foregroundStyle(region.accentColor)
+Text(placeName)
+.font(.subheadline.weight(.semibold))
+.foregroundStyle(.secondary)
+.multilineTextAlignment(.center)
+.padding(.horizontal, 12)
 }
 }
 }
-.frame(width: 1170, height: 2532)
-let renderer = ImageRenderer(content: wallpaperView)
-renderer.scale = 1.0
-renderedWallpaper = renderer.uiImage
+.frame(width: width, height: height)
+.clipShape(shape)
+.overlay(
+shape.stroke(
+isComplete ? Color.clear : Color.white.opacity(0.75),
+lineWidth: 1.5
+)
+)
 }
 }
-// MARK: - 4. PREVIEW
+// MARK: - 5. PREVIEW
 #Preview {
 PuzzleTab()
 .environment(TripStore())
 }
-
-
-
-
 
 
