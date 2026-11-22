@@ -35,22 +35,41 @@ enum SingaporeRegion: String, CaseIterable, Identifiable {
     }
 
     var placeNames: [String] {
-        switch self {
-        case .central:
-            return ["Burma Social", "Chinatown Food Street", "Tekka Centre"]
-        case .north:
-            return ["Kampong Lorong Buangkok", "Thomson Nature Park"]
-        case .east:
-            return ["Katong Shophouses", "East Coast Park"]
-        case .south:
-            return ["Marina Barrage"]
-        case .west:
-            return ["Haw Par Villa", "Innovis"]
-        }
+        PlaceCatalog.allPlaces
+            .filter { $0.region == self }
+            .map { $0.name }
     }
 }
 
-// MARK: - 2. CUSTOM JIGSAW SHAPE
+// MARK: - 2. DYNAMIC GRID CALCULATOR
+
+struct PuzzleGridMetrics {
+    let places: [String]
+    let columns: Int
+    let rows: Int
+
+    init(places: [String]) {
+        self.places = places
+        let count = places.count
+        if count <= 1 {
+            self.columns = 1
+        } else if count <= 4 {
+            self.columns = 2
+        } else {
+            self.columns = 3
+        }
+        self.rows = max(1, Int(ceil(Double(count) / Double(self.columns))))
+    }
+
+    func itemsInRow(_ row: Int) -> [String] {
+        let start = row * columns
+        let end = min(start + columns, places.count)
+        guard start < end else { return [] }
+        return Array(places[start..<end])
+    }
+}
+
+// MARK: - 3. CUSTOM JIGSAW SHAPE
 
 struct JigsawPieceShape: Shape {
     let hasTopTab: Bool
@@ -133,7 +152,7 @@ struct JigsawPieceShape: Shape {
     }
 }
 
-// MARK: - 3. PUZZLE TAB VIEW
+// MARK: - 4. PUZZLE TAB VIEW
 
 struct PuzzleTab: View {
 
@@ -158,11 +177,9 @@ struct PuzzleTab: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 10) {
-                // COMPACT TOP REGION SELECTOR BAR
                 regionSelectorBar
                     .padding(.top, 4)
 
-                // FULL-SCREEN SWIPEABLE REGIONAL PUZZLE PAGER
                 TabView(selection: $selectedRegion) {
                     ForEach(SingaporeRegion.allCases) { region in
                         FullScreenRegionalPuzzlePage(
@@ -195,82 +212,69 @@ struct PuzzleTab: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(SingaporeRegion.allCases) { region in
-                    let isSelected = selectedRegion == region
-                    let unlocked = region.placeNames.filter { unlockedPhotos[$0] != nil }.count
-                    let total = region.placeNames.count
-                    let isDone = unlocked == total
-
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            selectedRegion = region
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: isDone ? "checkmark.circle.fill" : region.iconName)
-                                .font(.caption2)
-
-                            Text(region.rawValue)
-                                .font(.caption.weight(.semibold))
-
-                            Text(String(unlocked) + "/" + String(total))
-                                .font(.caption2.weight(.bold))
-                                .opacity(0.85)
-                        }
-                        .foregroundStyle(isSelected ? .white : .primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(
-                            isSelected ? region.accentColor : Color(.secondarySystemGroupedBackground),
-                            in: Capsule()
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    regionChip(for: region)
                 }
             }
             .padding(.horizontal, 16)
         }
     }
 
+    @ViewBuilder
+    private func regionChip(for region: SingaporeRegion) -> some View {
+        let isSelected = selectedRegion == region
+        let regionPlaces = region.placeNames
+        let unlocked = regionPlaces.filter { unlockedPhotos[$0] != nil }.count
+        let total = regionPlaces.count
+        let isDone = total > 0 && unlocked == total
+        let progressText = String(unlocked) + "/" + String(total)
+
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                selectedRegion = region
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: isDone ? "checkmark.circle.fill" : region.iconName)
+                    .font(.caption2)
+
+                Text(region.rawValue)
+                    .font(.caption.weight(.semibold))
+
+                Text(progressText)
+                    .font(.caption2.weight(.bold))
+                    .opacity(0.85)
+            }
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                isSelected ? region.accentColor : Color(.secondarySystemGroupedBackground),
+                in: Capsule()
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532)
 
     @MainActor
     private func downloadWallpaper(for region: SingaporeRegion) {
-        let places = region.placeNames
+        let metrics = PuzzleGridMetrics(places: region.placeNames)
         let wallpaperWidth: CGFloat = 1170
         let wallpaperHeight: CGFloat = 2532
+        let rowHeight = wallpaperHeight / CGFloat(metrics.rows)
 
-        let wallpaperView = Group {
-            if places.count == 3 {
-                // 3-piece layout: Top half hero + Bottom 2 side-by-side
-                VStack(spacing: 0) {
-                    if let photo0 = unlockedPhotos[places[0]] {
-                        wallpaperPhotoTile(photo: photo0, width: wallpaperWidth, height: wallpaperHeight * 0.5)
-                    }
-                    HStack(spacing: 0) {
-                        if let photo1 = unlockedPhotos[places[1]] {
-                            wallpaperPhotoTile(photo: photo1, width: wallpaperWidth * 0.5, height: wallpaperHeight * 0.5)
-                        }
-                        if let photo2 = unlockedPhotos[places[2]] {
-                            wallpaperPhotoTile(photo: photo2, width: wallpaperWidth * 0.5, height: wallpaperHeight * 0.5)
-                        }
-                    }
-                }
-            } else if places.count == 2 {
-                // 2-piece layout: Top half + Bottom half
-                VStack(spacing: 0) {
-                    ForEach(0..<2, id: \.self) { index in
-                        if let photo = unlockedPhotos[places[index]] {
-                            wallpaperPhotoTile(photo: photo, width: wallpaperWidth, height: wallpaperHeight * 0.5)
-                        }
-                    }
-                }
-            } else if let firstPlace = places.first, let photo = unlockedPhotos[firstPlace] {
-                // 1-piece layout: Full screen
-                wallpaperPhotoTile(photo: photo, width: wallpaperWidth, height: wallpaperHeight)
+        let wallpaperView = VStack(spacing: 0) {
+            ForEach(0..<metrics.rows, id: \.self) { row in
+                wallpaperRow(
+                    rowPlaces: metrics.itemsInRow(row),
+                    wallpaperWidth: wallpaperWidth,
+                    rowHeight: rowHeight
+                )
             }
         }
         .frame(width: wallpaperWidth, height: wallpaperHeight)
@@ -284,17 +288,39 @@ struct PuzzleTab: View {
             DispatchQueue.main.async {
                 switch status {
                 case .authorized, .limited:
+                    UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
+                    alertTitle = region.rawValue + " Wallpaper Downloaded!"
+                    alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
+                    showAlert = true
+                case .denied, .restricted:
+                    alertTitle = "Photo Access Needed"
+                    alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
+                    showAlert = true
+                default:
+                    break
+                }
+            }
+        }
+    }
 
-UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
-alertTitle = region.rawValue + " Wallpaper Downloaded!"
-alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
-showAlert = true
-case .denied, .restricted:
-alertTitle = "Photo Access Needed"
-alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
-showAlert = true
-default:
-break
+    @ViewBuilder
+    private func wallpaperRow(
+        rowPlaces: [String],
+        wallpaperWidth: CGFloat,
+        rowHeight: CGFloat
+    ) -> some View {
+        let count = max(1, rowPlaces.count)
+        let tileWidth = wallpaperWidth / CGFloat(count)
+
+        HStack(spacing: 0) {
+            ForEach(0..<rowPlaces.count, id: \.self) { idx in
+
+if let photo = unlockedPhotos[rowPlaces[idx]] {
+wallpaperPhotoTile(
+photo: photo,
+width: tileWidth,
+height: rowHeight
+)
 }
 }
 }
@@ -317,7 +343,7 @@ Image(uiImage: photo)
 .clipped()
 }
 }
-// MARK: - 4. FULL-SCREEN REGIONAL PUZZLE PAGE
+// MARK: - 5. FULL-SCREEN REGIONAL PUZZLE PAGE
 struct FullScreenRegionalPuzzlePage: View {
 let region: SingaporeRegion
 let unlockedPhotos: [String: UIImage]
@@ -331,94 +357,13 @@ unlockedCount == places.count && !places.isEmpty
 }
 var body: some View {
 VStack(spacing: 12) {
-// FULL-SCREEN PROPORTIONAL PUZZLE CANVAS
 GeometryReader { geo in
-let spacing: CGFloat = isComplete ? 0 : 4
-let boardWidth = geo.size.width
-let boardHeight = geo.size.height
-Group {
-if places.count == 3 {
-// 3-Piece Balanced Collage: Top Wide Piece + 2 Bottom Side-by-Side Pieces
-let topHeight = (boardHeight - spacing) * 0.5
-let bottomHeight = (boardHeight - spacing) * 0.5
-let halfWidth = (boardWidth - spacing) * 0.5
-VStack(spacing: spacing) {
-puzzleTile(
-placeName: places[0],
-width: boardWidth,
-height: topHeight,
-topTab: false,
-rightTab: false,
-bottomTab: true,
-leftTab: false
+puzzleBoard(
+boardWidth: geo.size.width,
+boardHeight: geo.size.height
 )
-HStack(spacing: spacing) {
-puzzleTile(
-placeName: places[1],
-width: halfWidth,
-height: bottomHeight,
-topTab: true,
-rightTab: true,
-bottomTab: false,
-leftTab: false
-)
-puzzleTile(
-placeName: places[2],
-width: halfWidth,
-height: bottomHeight,
-topTab: true,
-rightTab: false,
-bottomTab: false,
-leftTab: true
-)
-}
-}
-} else if places.count == 2 {
-// 2-Piece Balanced Collage: Top & Bottom Halves
-let halfHeight = (boardHeight - spacing) * 0.5
-VStack(spacing: spacing) {
-puzzleTile(
-placeName: places[0],
-width: boardWidth,
-height: halfHeight,
-topTab: false,
-rightTab: false,
-bottomTab: true,
-leftTab: false
-)
-puzzleTile(
-placeName: places[1],
-width: boardWidth,
-height: halfHeight,
-topTab: true,
-rightTab: false,
-bottomTab: false,
-leftTab: false
-)
-}
-} else if let singlePlace = places.first {
-// 1-Piece Full-Screen Wallpaper
-puzzleTile(
-placeName: singlePlace,
-width: boardWidth,
-height: boardHeight,
-topTab: false,
-rightTab: false,
-bottomTab: false,
-leftTab: false
-)
-}
-}
-.clipShape(RoundedRectangle(cornerRadius: 24))
-.overlay(
-RoundedRectangle(cornerRadius: 24)
-.stroke(Color.primary.opacity(0.12), lineWidth: 1)
-)
-.shadow(color: .black.opacity(0.14), radius: 10, y: 4)
-.animation(.easeInOut(duration: 0.35), value: isComplete)
 }
 .padding(.horizontal, 16)
-// DOWNLOAD BUTTON (APPEARS ONLY ONCE FINISHED)
 if isComplete {
 Button(action: onDownload) {
 Label(
@@ -437,7 +382,61 @@ systemImage: "arrow.down.to.line.circle.fill"
 }
 .padding(.bottom, 12)
 }
+// MARK: - PUZZLE BOARD & ROWS
+@ViewBuilder
+private func puzzleBoard(boardWidth: CGFloat, boardHeight: CGFloat) -> some View {
+let metrics = PuzzleGridMetrics(places: places)
+let spacing: CGFloat = isComplete ? 0 : 4
+let totalVSpacing = spacing * CGFloat(max(0, metrics.rows - 1))
+let rowHeight = max(10, (boardHeight - totalVSpacing) / CGFloat(metrics.rows))
+VStack(spacing: spacing) {
+ForEach(0..<metrics.rows, id: \.self) { row in
+puzzleRow(
+row: row,
+metrics: metrics,
+boardWidth: boardWidth,
+rowHeight: rowHeight,
+spacing: spacing
+)
+}
+}
+.clipShape(RoundedRectangle(cornerRadius: 24))
+.overlay(
+RoundedRectangle(cornerRadius: 24)
+.stroke(Color.primary.opacity(0.12), lineWidth: 1)
+)
+.shadow(color: .black.opacity(0.14), radius: 10, y: 4)
+.animation(.easeInOut(duration: 0.35), value: isComplete)
+}
+@ViewBuilder
+private func puzzleRow(
+row: Int,
+metrics: PuzzleGridMetrics,
+boardWidth: CGFloat,
+rowHeight: CGFloat,
+spacing: CGFloat
+) -> some View {
+let rowPlaces = metrics.itemsInRow(row)
+let colsInRow = max(1, rowPlaces.count)
+let totalHSpacing = spacing * CGFloat(max(0, colsInRow - 1))
+let tileWidth = max(10, (boardWidth - totalHSpacing) / CGFloat(colsInRow))
+HStack(spacing: spacing) {
+ForEach(0..<rowPlaces.count, id: \.self) { colIndex in
+puzzleTile(
+placeName: rowPlaces[colIndex],
+width: tileWidth,
+height: rowHeight,
+topTab: row > 0,
+rightTab: colIndex < colsInRow - 1,
+bottomTab: row < metrics.rows - 1,
+leftTab: colIndex > 0,
+isCompact: metrics.rows >= 4
+)
+}
+}
+}
 // MARK: - INDIVIDUAL PUZZLE TILE
+@ViewBuilder
 private func puzzleTile(
 placeName: String,
 width: CGFloat,
@@ -445,7 +444,8 @@ height: CGFloat,
 topTab: Bool,
 rightTab: Bool,
 bottomTab: Bool,
-leftTab: Bool
+leftTab: Bool,
+isCompact: Bool
 ) -> some View {
 let photo = unlockedPhotos[placeName]
 let shape = JigsawPieceShape(
@@ -455,8 +455,24 @@ hasBottomTab: bottomTab,
 hasLeftTab: leftTab,
 isAssembled: isComplete
 )
-return ZStack {
+ZStack {
 if let photo {
+unlockedTileContent(photo: photo, width: width, height: height)
+} else {
+lockedTileContent(placeName: placeName, isCompact: isCompact)
+}
+}
+.frame(width: width, height: height)
+.clipShape(shape)
+.overlay(
+shape.stroke(
+isComplete ? Color.clear : Color.white.opacity(0.75),
+lineWidth: 1.5
+)
+)
+}
+@ViewBuilder
+private func unlockedTileContent(photo: UIImage, width: CGFloat, height: CGFloat) -> some View {
 ZStack {
 Image(uiImage: photo)
 .resizable()
@@ -470,34 +486,27 @@ Image(uiImage: photo)
 .frame(width: width, height: height)
 }
 .clipped()
-} else {
+}
+@ViewBuilder
+private func lockedTileContent(placeName: String, isCompact: Bool) -> some View {
 Color(.secondarySystemGroupedBackground)
-VStack(spacing: 8) {
+VStack(spacing: isCompact ? 4 : 8) {
 Image(systemName: "lock.fill")
-.font(.title3)
+.font(isCompact ? .caption : .title3)
 .foregroundStyle(region.accentColor)
 Text(placeName)
-.font(.subheadline.weight(.semibold))
+.font(isCompact ? .system(size: 10, weight: .semibold) : .subheadline.weight(.semibold))
 .foregroundStyle(.secondary)
 .multilineTextAlignment(.center)
-.padding(.horizontal, 12)
+.lineLimit(2)
+.minimumScaleFactor(0.75)
+.padding(.horizontal, 6)
 }
 }
 }
-.frame(width: width, height: height)
-.clipShape(shape)
-.overlay(
-shape.stroke(
-isComplete ? Color.clear : Color.white.opacity(0.75),
-lineWidth: 1.5
-)
-)
-}
-}
-// MARK: - 5. PREVIEW
+// MARK: - 6. PREVIEW
 #Preview {
 PuzzleTab()
 .environment(TripStore())
 }
-
 
