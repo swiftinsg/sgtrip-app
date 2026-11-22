@@ -1,4 +1,5 @@
 
+
 //shivika
 
 import SwiftUI
@@ -7,11 +8,26 @@ import CoreLocation
 
 /// Main view displaying all user-captured photo memories.
 /// - Shows a "No memories yet" state if the trip store has no memories.
-/// - Otherwise, displays a scrollable list of MemoryCard views, one per memory.
+/// - Otherwise, displays a searchable, newest-first scrollable list of MemoryCard views.
 struct MemoriesTab: View {
     @Environment(TripStore.self) private var tripStore
     @State private var selectedPlace: Place?
     @State private var confirmationMessage: String?
+    @State private var searchText = ""
+
+    // Filters memories by search text and sorts newest first
+    private var filteredMemories: [SavedMemory] {
+        let sorted = tripStore.memories.sorted { $0.date > $1.date }
+        
+        if searchText.isEmpty {
+            return sorted
+        } else {
+            return sorted.filter { memory in
+                memory.placeName.localizedCaseInsensitiveContains(searchText) ||
+                memory.locationDescription.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
 
     // Same 10 recommended places so tapping a memory shows the exact prompt & coordinates
     private let knownPlaces: [Place] = [
@@ -112,89 +128,100 @@ struct MemoriesTab: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: 16) {
-                // CONDITIONAL: Show empty state or memory list based on data availability
-                if tripStore.memories.isEmpty {
-                    // EMPTY STATE - Displayed when user has no saved memories
-                    VStack(spacing: 12) {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
+        NavigationStack {
+            ZStack(alignment: .top) {
+                mainContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .navigationTitle("Memories")
+                    .background(Color(.systemGroupedBackground))
+                    .modifier(ConditionalSearchModifier(
+                        isEnabled: !tripStore.memories.isEmpty,
+                        searchText: $searchText
+                    ))
 
-                        Text("No memories yet")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
+                if let confirmationMessage {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.white)
 
-                        Text("Take photos at recommended locations to unlock memories")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                        Text(confirmationMessage)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
                     }
-                    .padding()
-                } else {
-                    // MEMORY LIST - Scrollable list of memory cards
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 16) {
-                            ForEach(tripStore.memories) { memory in
-                                Button {
-                                    selectedPlace = place(for: memory)
-                                } label: {
-                                    MemoryCard(memory: memory)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding()
-                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.green.gradient, in: Capsule())
+                    .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Memories")
-            .background(Color(.systemGroupedBackground))
+            .sheet(item: $selectedPlace) { place in
+                LocationDetailView(
+                    place: place,
+                    isCompleted: true,
+                    completedImage: completedPhoto(for: place),
+                    currentLocation: nil
+                ) { updatedMemory in
+                    let placeTitle = place.name
+                    let imageDataToSave = updatedMemory.rawImageData
+                        ?? updatedMemory.image.jpegData(compressionQuality: 0.9)
 
-            if let confirmationMessage {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.white)
+                    if let imageData = imageDataToSave {
+                        tripStore.memories.removeAll { $0.placeName == placeTitle }
 
-                    Text(confirmationMessage)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
+                        tripStore.addMemory(
+                            placeName: updatedMemory.placeName,
+                            locationDescription: place.locationDescription,
+                            date: updatedMemory.dateTaken,
+                            latitude: updatedMemory.coordinate.latitude,
+                            longitude: updatedMemory.coordinate.longitude,
+                            imageData: imageData
+                        )
+
+                        showConfirmation(placeTitle + " photo replaced!")
+                    }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.green.gradient, in: Capsule())
-                .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
-                .padding(.top, 8)
-                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .sheet(item: $selectedPlace) { place in
-            LocationDetailView(
-                place: place,
-                isCompleted: true,
-                completedImage: completedPhoto(for: place),
-                currentLocation: nil
-            ) { updatedMemory in
-                let placeTitle = place.name
-                let imageDataToSave = updatedMemory.rawImageData
-                    ?? updatedMemory.image.jpegData(compressionQuality: 0.9)
+    }
 
-                if let imageData = imageDataToSave {
-                    tripStore.memories.removeAll { $0.placeName == placeTitle }
+    @ViewBuilder
+    private var mainContent: some View {
+        if tripStore.memories.isEmpty {
+            // EMPTY STATE - Displayed when user has no saved memories
+            VStack(spacing: 12) {
+                Image(systemName: "photo.on.rectangle")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
 
-                    tripStore.addMemory(
-                        placeName: updatedMemory.placeName,
-                        locationDescription: place.locationDescription,
-                        date: updatedMemory.dateTaken,
-                        latitude: updatedMemory.coordinate.latitude,
-                        longitude: updatedMemory.coordinate.longitude,
-                        imageData: imageData
-                    )
+                Text("No memories yet")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
 
-                    showConfirmation(placeTitle + " photo replaced!")
+                Text("Take photos at recommended locations to unlock memories")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
+        } else if filteredMemories.isEmpty {
+            // EMPTY SEARCH STATE - Displayed when search returns no matches
+            ContentUnavailableView.search(text: searchText)
+        } else {
+            // MEMORY LIST - Scrollable list of memory cards (newest first)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    ForEach(filteredMemories) { memory in
+                        Button {
+                            selectedPlace = place(for: memory)
+                        } label: {
+                            MemoryCard(memory: memory)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .padding()
             }
         }
     }
@@ -216,30 +243,45 @@ struct MemoriesTab: View {
     }
 }
 
+/// Only attaches the search bar when `isEnabled` is true (i.e., memories > 0)
+
+
+private struct ConditionalSearchModifier: ViewModifier {
+let isEnabled: Bool
+@Binding var searchText: String
+func body(content: Content) -> some View {
+if isEnabled {
+content.searchable(
+text: $searchText,
+placement: .navigationBarDrawer(displayMode: .always),
+prompt: "Search places or locations"
+)
+} else {
+content
+}
+}
+}
 /// A single card displaying a captured memory (photo + metadata).
 /// - Shows the photo image with a fallback placeholder if image data is invalid.
 /// - Displays the place name and capture date below the image.
 struct MemoryCard: View {
-    let memory: SavedMemory
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-
-            // IMAGE PREVIEW - Shows the captured photo or a placeholder
-            if let uiImage = UIImage(data: memory.imageData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 150)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
-                    )
-            } else {
-
+let memory: SavedMemory
+var body: some View {
+VStack(alignment: .leading, spacing: 12) {
+// IMAGE PREVIEW - Shows the captured photo or a placeholder
+if let uiImage = UIImage(data: memory.imageData) {
+Image(uiImage: uiImage)
+.resizable()
+.aspectRatio(contentMode: .fill)
+.frame(maxWidth: .infinity)
+.frame(height: 150)
+.clipped()
+.clipShape(RoundedRectangle(cornerRadius: 12))
+.overlay(
+RoundedRectangle(cornerRadius: 12)
+.stroke(Color(.systemGray4), lineWidth: 1)
+)
+} else {
 Rectangle()
 .fill(Color(.systemGray5))
 .frame(height: 150)
@@ -288,10 +330,15 @@ Text(memory.date.formatted(date: .abbreviated, time: .shortened))
 /// - Previews the MemoriesTab with an empty TripStore environment.
 struct MemoriesTab_Previews: PreviewProvider {
 static var previews: some View {
-NavigationStack {
 MemoriesTab()
 .environment(TripStore())
 }
 }
-}
+
+
+
+
+
+
+
 
