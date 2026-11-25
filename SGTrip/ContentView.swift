@@ -32,3 +32,4 @@ struct ContentView: View {
     ContentView()
         .environment(TripStore())
 }
+

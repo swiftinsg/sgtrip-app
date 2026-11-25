@@ -5,23 +5,68 @@
 //  Created by T Krobot on 19/11/26.
 //
 
-
-
 import SwiftUI
-import Foundation
-import Combine
 import CoreLocation
 
-// MARK: - Singapore Boundary Data
+// MARK: - 1. GEOJSON DECODING MODELS
+
+private struct DataGovPollResponse: Decodable {
+    let data: PollData?
+
+    struct PollData: Decodable {
+        let url: String?
+    }
+}
+
+private struct GeoJSONFeatureCollection: Decodable {
+    let features: [GeoJSONFeature]
+}
+
+private struct GeoJSONFeature: Decodable {
+    let properties: FeatureProperties?
+    let geometry: FeatureGeometry?
+
+    struct FeatureProperties: Decodable {
+        let folderPath: String?
+
+        enum CodingKeys: String, CodingKey {
+            case folderPath = "FOLDERPATH"
+        }
+    }
+
+    struct FeatureGeometry: Decodable {
+        let type: String
+        let coordinates: GeoJSONCoordinates
+    }
+}
+
+private enum GeoJSONCoordinates: Decodable {
+    case polygon([[[Double]]])
+    case multiPolygon([[[[Double]]]])
+    case unsupported
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let multi = try? container.decode([[[[Double]]]].self) {
+            self = .multiPolygon(multi)
+        } else if let single = try? container.decode([[[Double]]].self) {
+            self = .polygon(single)
+        } else {
+            self = .unsupported
+        }
+    }
+}
+
+// MARK: - 2. SINGAPORE BOUNDARY STORE
 
 @MainActor
-final class SingaporeBoundaryStore: ObservableObject {
-
+@Observable
+final class SingaporeBoundaryStore {
     static let shared = SingaporeBoundaryStore()
 
-    @Published var rings: [[CGPoint]] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    var rings: [[CGPoint]] = []
+    var isLoading = false
+    var errorMessage: String?
 
     private let datasetID = "d_29f066d67df3eae91df8a42f443863c8"
 
@@ -30,190 +75,111 @@ final class SingaporeBoundaryStore: ObservableObject {
     // MARK: Load Singapore Map
 
     func load() async {
-        guard rings.isEmpty && !isLoading else {
-            return
-        }
+        guard rings.isEmpty, !isLoading else { return }
 
         isLoading = true
         errorMessage = nil
-
-        defer {
-            isLoading = false
-        }
+        defer { isLoading = false }
 
         do {
-            // Request the official dataset download link.
-            let apiURL = URL(
-                string: "https://api-open.data.gov.sg/v1/public/api/datasets/\(datasetID)/poll-download"
-            )!
+            let pollURLString = "https://data.gov.sg\(datasetID)/poll-download"
+            guard let apiURL = URL(string: pollURLString) else {
+                throw BoundaryError.invalidURL
+            }
 
             let (metadataData, _) = try await URLSession.shared.data(from: apiURL)
+            let pollResponse = try JSONDecoder().decode(DataGovPollResponse.self, from: metadataData)
 
-            guard
-                let metadata = try JSONSerialization.jsonObject(
-                    with: metadataData
-                ) as? [String: Any],
-                let data = metadata["data"] as? [String: Any],
-                let downloadURLString = data["url"] as? String,
-                let downloadURL = URL(string: downloadURLString)
-            else {
+            guard let downloadURLString = pollResponse.data?.url,
+                  let downloadURL = URL(string: downloadURLString) else {
                 throw BoundaryError.downloadLinkUnavailable
             }
 
-            // Download the GeoJSON map data.
-            let (geoJSONData, _) = try await URLSession.shared.data(
-                from: downloadURL
-            )
+            let (geoJSONData, _) = try await URLSession.shared.data(from: downloadURL)
+            let collection = try JSONDecoder().decode(GeoJSONFeatureCollection.self, from: geoJSONData)
 
-            guard
-                let geoJSON = try JSONSerialization.jsonObject(
-                    with: geoJSONData
-                ) as? [String: Any],
-                let features = geoJSON["features"] as? [[String: Any]]
-            else {
-                throw BoundaryError.invalidGeoJSON
-            }
-
-            var loadedRings: [[CGPoint]] = []
-
-            // Read the coastal outline features.
-            for feature in features {
-
-                let properties = feature["properties"] as? [String: Any] ?? [:]
-
-                let folderPath = properties["FOLDERPATH"] as? String ?? ""
-
-                guard folderPath == "Layers/Coastal_Outlines" else {
-                    continue
-                }
-
-                guard
-                    let geometry = feature["geometry"] as? [String: Any],
-                    let geometryType = geometry["type"] as? String,
-                    let coordinates = geometry["coordinates"]
-                else {
-                    continue
-                }
-
-                switch geometryType {
-
-                case "Polygon":
-
-                    if let polygon = coordinates as? [[[Double]]],
-                       let exteriorRing = polygon.first {
-
-                        let points = makePoints(from: exteriorRing)
-
-                        if points.count >= 3 {
-                            loadedRings.append(points)
-                        }
-                    }
-
-                case "MultiPolygon":
-
-                    if let multiPolygon = coordinates as? [[[[Double]]]] {
-
-                        for polygon in multiPolygon {
-
-                            guard let exteriorRing = polygon.first else {
-                                continue
-                            }
-
-                            let points = makePoints(from: exteriorRing)
-
-                            if points.count >= 3 {
-                                loadedRings.append(points)
-                            }
-                        }
-                    }
-
-                default:
-                    continue
-                }
-            }
-
+            let loadedRings = extractCoastalRings(from: collection.features)
             guard !loadedRings.isEmpty else {
                 throw BoundaryError.noCoastalOutlinesFound
             }
 
-            // Keep only the largest coastal outline: the main island.
+            // Keep only the largest coastal outline (main Singapore island)
             rings = [largestRing(from: loadedRings)]
-
         } catch {
             errorMessage = error.localizedDescription
             print("Singapore map loading error: \(error)")
         }
     }
 
-    // MARK: Convert GeoJSON Coordinates
+    // MARK: Helpers
 
-    private func makePoints(from coordinates: [[Double]]) -> [CGPoint] {
+    private func extractCoastalRings(from features: [GeoJSONFeature]) -> [[CGPoint]] {
+        var result: [[CGPoint]] = []
 
-        return coordinates.compactMap { coordinate in
-
-            guard coordinate.count >= 2 else {
-                return nil
+        for feature in features {
+            guard feature.properties?.folderPath == "Layers/Coastal_Outlines",
+                  let geometry = feature.geometry else {
+                continue
             }
 
-            let longitude = coordinate[0]
-            let latitude = coordinate[1]
+            switch geometry.coordinates {
+            case .polygon(let polygon):
+                if let exteriorRing = polygon.first {
+                    let points = makePoints(from: exteriorRing)
+                    if points.count >= 3 { result.append(points) }
+                }
 
-            return CGPoint(
-                x: longitude,
-                y: latitude
-            )
+            case .multiPolygon(let multiPolygon):
+                for polygon in multiPolygon {
+                    if let exteriorRing = polygon.first {
+                        let points = makePoints(from: exteriorRing)
+                        if points.count >= 3 { result.append(points) }
+                    }
+                }
+
+            case .unsupported:
+                continue
+            }
+        }
+
+        return result
+    }
+
+    private func makePoints(from coordinates: [[Double]]) -> [CGPoint] {
+        coordinates.compactMap { coord in
+            guard coord.count >= 2 else { return nil }
+            return CGPoint(x: coord[0], y: coord[1])
         }
     }
 
-    // MARK: Main Island Selection
-
-    /// Picks the coastal outline with the largest area.
-    /// This removes the smaller external islands from the puzzle silhouette.
     private func largestRing(from rings: [[CGPoint]]) -> [CGPoint] {
-
-        guard let largest = rings.max(by: { ringArea($0) < ringArea($1) }) else {
-            return []
-        }
-
-        return largest
+        rings.max(by: { ringArea($0) < ringArea($1) }) ?? []
     }
 
     private func ringArea(_ ring: [CGPoint]) -> CGFloat {
-
-        guard ring.count >= 3 else {
-            return 0
-        }
-
+        guard ring.count >= 3 else { return 0 }
         var total: CGFloat = 0
-
-        for index in ring.indices {
-            let current = ring[index]
-            let next = ring[(index + 1) % ring.count]
-
+        for i in ring.indices {
+            let current = ring[i]
+            let next = ring[(i + 1) % ring.count]
             total += current.x * next.y - next.x * current.y
         }
-
         return abs(total) / 2
     }
 
     // MARK: Errors
 
     enum BoundaryError: LocalizedError {
-
+        case invalidURL
         case downloadLinkUnavailable
-        case invalidGeoJSON
         case noCoastalOutlinesFound
 
         var errorDescription: String? {
-
             switch self {
-
+            case .invalidURL:
+                return "Invalid Singapore dataset URL."
             case .downloadLinkUnavailable:
                 return "Could not get the Singapore map download link."
-
-            case .invalidGeoJSON:
-                return "The downloaded Singapore map data is invalid."
-
             case .noCoastalOutlinesFound:
                 return "No Singapore coastal outlines were found in the dataset."
             }
@@ -221,13 +187,9 @@ final class SingaporeBoundaryStore: ObservableObject {
     }
 }
 
+// MARK: - 3. MAP PROJECTION
 
-// MARK: - Map Projection
-
-/// Converts longitude/latitude points into the view's coordinate space.
-/// Shared by the outline and the puzzle pieces so they always line up.
 struct SingaporeMapProjection {
-
     let minLongitude: CGFloat
     let maxLongitude: CGFloat
     let minLatitude: CGFloat
@@ -237,7 +199,6 @@ struct SingaporeMapProjection {
     let offsetY: CGFloat
 
     init(rings: [[CGPoint]], rect: CGRect) {
-
         let allPoints = rings.flatMap { $0 }
 
         minLongitude = allPoints.map(\.x).min() ?? 0
@@ -247,24 +208,16 @@ struct SingaporeMapProjection {
 
         let longitudeSpan = maxLongitude - minLongitude
         let latitudeSpan = maxLatitude - minLatitude
+        let drawingRect = rect.insetBy(dx: rect.width * 0.02, dy: rect.height * 0.02)
 
-        let drawingRect = rect.insetBy(
-            dx: rect.width * 0.02,
-            dy: rect.height * 0.02
-        )
+        if longitudeSpan > 0, latitudeSpan > 0 {
+            scale = min(drawingRect.width / longitudeSpan, drawingRect.height / latitudeSpan)
+        } else {
+            scale = 0
+        }
 
-        scale = longitudeSpan > 0 && latitudeSpan > 0
-            ? min(
-                drawingRect.width / longitudeSpan,
-                drawingRect.height / latitudeSpan
-            )
-            : 0
-
-        offsetX = drawingRect.minX +
-            (drawingRect.width - longitudeSpan * scale) / 2
-
-        offsetY = drawingRect.minY +
-            (drawingRect.height - latitudeSpan * scale) / 2
+        offsetX = drawingRect.minX + (drawingRect.width - longitudeSpan * scale) / 2
+        offsetY = drawingRect.minY + (drawingRect.height - latitudeSpan * scale) / 2
     }
 
     func point(from geoPoint: CGPoint) -> CGPoint {
@@ -275,43 +228,28 @@ struct SingaporeMapProjection {
     }
 
     func point(for coordinate: CLLocationCoordinate2D) -> CGPoint {
-        point(
-            from: CGPoint(
-                x: CGFloat(coordinate.longitude),
-                y: CGFloat(coordinate.latitude)
-            )
-        )
+        point(from: CGPoint(x: coordinate.longitude, y: coordinate.latitude))
     }
 }
 
-// MARK: - Actual Singapore Map Shape
+// MARK: - 4. SINGAPORE GEOJSON SHAPE
 
 struct SingaporeGeoJSONShape: Shape {
-
     var rings: [[CGPoint]]
 
     func path(in rect: CGRect) -> Path {
-
-        guard !rings.isEmpty else {
-            return Path()
-        }
+        guard !rings.isEmpty else { return Path() }
 
         let projection = SingaporeMapProjection(rings: rings, rect: rect)
         var result = Path()
 
-        // Draw the main island and each separate coastal outline.
         for ring in rings {
-
-            guard let firstPoint = ring.first else {
-                continue
-            }
-
+            guard let firstPoint = ring.first else { continue }
             result.move(to: projection.point(from: firstPoint))
 
             for point in ring.dropFirst() {
                 result.addLine(to: projection.point(from: point))
             }
-
             result.closeSubpath()
         }
 
