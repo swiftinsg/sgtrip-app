@@ -2,7 +2,7 @@
 //  TripStore.swift
 //  SGTrip
 //
-//  Created by T Krobot on 13/11/26.
+//  Created by Shivika on 13/11/26.
 //
 
 /// Import statements for the TripStore data model and management system.

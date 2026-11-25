@@ -1,4 +1,5 @@
 
+//shivika
 import SwiftUI
 import MapKit
 import CoreLocation
@@ -227,10 +228,10 @@ enum PlaceCatalog {
             infoType: "Historic & Nature",
             locationDescription: "River Valley Road",
             photoPrompt: "Snap a photo at the famous Tree Tunnel or Sang Nila Utama Garden!",
+            coordinate: CLLocationCoordinate2D(latitude: 1.2944, longitude: 103.8469)
+        ),
+        Place(
 
-coordinate: CLLocationCoordinate2D(latitude: 1.2944, longitude: 103.8469)
-),
-Place(
 name: "Kampong Gelam",
 region: .central,
 infoType: "Cultural & Historic",
@@ -779,7 +780,7 @@ cameraPosition = .region(Self.defaultSingaporeRegion)
 } label: {
 Text(labelText)
 .font(.caption2.weight(.semibold))
-.foregroundStyle(isSelected ? .white : .primary)
+.foregroundStyle(isSelected ? Color(.systemBackground) : .primary)
 .padding(.horizontal, 10)
 .padding(.vertical, 6)
 .background(
@@ -994,7 +995,7 @@ Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
 Image(systemName: completed ? "checkmark.circle.fill" : "mappin.circle.fill")
 .font(.title2)
 .foregroundStyle(completed ? .green : .red)
-.background(Color.white)
+.background(Color(.systemBackground))
 .clipShape(Circle())
 .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
 .onTapGesture {
@@ -1011,7 +1012,7 @@ Annotation(memory.placeName, coordinate: coordinate, anchor: .bottom) {
 Image(systemName: "checkmark.circle.fill")
 .font(.title2)
 .foregroundStyle(.green)
-.background(Color.white)
+.background(Color(.systemBackground))
 .clipShape(Circle())
 .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
 .onTapGesture {
@@ -1433,4 +1434,5 @@ Spacer()
 RecommendationTab()
 .environment(TripStore())
 }
+
 

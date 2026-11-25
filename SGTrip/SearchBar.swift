@@ -1,4 +1,4 @@
-//
+//SQ
 //  SearchBar.swift
 //  SGTrip
 //
