@@ -1,7 +1,9 @@
+
 //shivika
 import SwiftUI
 import UIKit
 import Photos
+import ImageIO
 
 // MARK: - 1. REGION & JIGSAW MODELS
 
@@ -34,10 +36,55 @@ enum SingaporeRegion: String, CaseIterable, Identifiable {
         }
     }
 
+    private static let cachedPlaceNamesByRegion: [SingaporeRegion: [String]] = {
+        Dictionary(grouping: PlaceCatalog.allPlaces, by: \.region)
+            .mapValues { $0.map(\.name) }
+    }()
+
     var placeNames: [String] {
-        PlaceCatalog.allPlaces
-            .filter { $0.region == self }
-            .map { $0.name }
+        Self.cachedPlaceNamesByRegion[self] ?? []
+    }
+}
+
+// MARK: - 1B. FAST CRISP THUMBNAIL CACHE
+
+actor PuzzleImageCache {
+    static let shared = PuzzleImageCache()
+    private var cache: [String: UIImage] = [:]
+
+    private init() {}
+
+    func thumbnail(for placeName: String, data: Data) -> UIImage? {
+        let cacheKey = "\(placeName)_\(data.count)"
+        if let existing = cache[cacheKey] {
+            return existing
+        }
+
+        guard let downsampled = downsample(data: data, maxDimension: 420) else {
+            return nil
+        }
+
+        cache[cacheKey] = downsampled
+        return downsampled
+    }
+
+    private func downsample(data: Data, maxDimension: CGFloat) -> UIImage? {
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else {
+            return UIImage(data: data)
+        }
+
+        let downsampleOptions = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDimension
+        ] as CFDictionary
+
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions) else {
+            return UIImage(data: data)
+        }
+        return UIImage(cgImage: cgImage)
     }
 }
 
@@ -159,19 +206,17 @@ struct PuzzleTab: View {
     @Environment(TripStore.self) private var tripStore
 
     @State private var selectedRegion: SingaporeRegion = .central
+    @State private var cachedThumbnails: [String: UIImage] = [:]
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
 
-    private var unlockedPhotos: [String: UIImage] {
-        var dict: [String: UIImage] = [:]
-        for memory in tripStore.memories {
-            if dict[memory.placeName] == nil,
-               let uiImage = UIImage(data: memory.imageData) {
-                dict[memory.placeName] = uiImage
-            }
-        }
-        return dict
+    private var unlockedPlaceSet: Set<String> {
+        Set(tripStore.memories.map(\.placeName))
+    }
+
+    private var memoriesSignature: [String] {
+        tripStore.memories.map { "\($0.placeName)_\($0.imageData.count)" }
     }
 
     var body: some View {
@@ -184,7 +229,7 @@ struct PuzzleTab: View {
                     ForEach(SingaporeRegion.allCases) { region in
                         FullScreenRegionalPuzzlePage(
                             region: region,
-                            unlockedPhotos: unlockedPhotos,
+                            thumbnails: cachedThumbnails,
                             onDownload: {
                                 downloadWallpaper(for: region)
                             }
@@ -198,11 +243,29 @@ struct PuzzleTab: View {
             .navigationTitle("SG Puzzles")
             .navigationBarTitleDisplayMode(.inline)
             .statusBarHidden(true)
+            .task(id: memoriesSignature) {
+                await refreshThumbnailCache()
+            }
             .alert(alertTitle, isPresented: $showAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(alertMessage)
             }
+        }
+    }
+
+    private func refreshThumbnailCache() async {
+        let items = tripStore.memories.map { ($0.placeName, $0.imageData) }
+        var updated: [String: UIImage] = [:]
+
+        for (placeName, data) in items where updated[placeName] == nil {
+            if let thumb = await PuzzleImageCache.shared.thumbnail(for: placeName, data: data) {
+                updated[placeName] = thumb
+            }
+        }
+
+        if !Task.isCancelled {
+            cachedThumbnails = updated
         }
     }
 
@@ -223,7 +286,7 @@ struct PuzzleTab: View {
     private func regionChip(for region: SingaporeRegion) -> some View {
         let isSelected = selectedRegion == region
         let regionPlaces = region.placeNames
-        let unlocked = regionPlaces.filter { unlockedPhotos[$0] != nil }.count
+        let unlocked = regionPlaces.filter { unlockedPlaceSet.contains($0) }.count
         let total = regionPlaces.count
         let isDone = total > 0 && unlocked == total
         let progressText = String(unlocked) + "/" + String(total)
@@ -259,98 +322,83 @@ struct PuzzleTab: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532)
+    // MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532 CRISP FULL-RES)
 
     @MainActor
-    private func downloadWallpaper(for region: SingaporeRegion) {
-        let metrics = PuzzleGridMetrics(places: region.placeNames)
-        let wallpaperWidth: CGFloat = 1170
-        let wallpaperHeight: CGFloat = 2532
-        let rowHeight = wallpaperHeight / CGFloat(metrics.rows)
 
-        let wallpaperView = VStack(spacing: 0) {
-            ForEach(0..<metrics.rows, id: \.self) { row in
-                wallpaperRow(
-                    rowPlaces: metrics.itemsInRow(row),
-                    wallpaperWidth: wallpaperWidth,
-                    rowHeight: rowHeight
-                )
-            }
-        }
-        .frame(width: wallpaperWidth, height: wallpaperHeight)
-
-        let renderer = ImageRenderer(content: wallpaperView)
-        renderer.scale = 1.0
-
-        guard let wallpaper = renderer.uiImage else { return }
-
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-            DispatchQueue.main.async {
-                switch status {
-                case .authorized, .limited:
-                    UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
-                    alertTitle = region.rawValue + " Wallpaper Downloaded!"
-                    alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
-                    showAlert = true
-                case .denied, .restricted:
-                    alertTitle = "Photo Access Needed"
-                    alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
-                    showAlert = true
-                default:
-                    break
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func wallpaperRow(
-        rowPlaces: [String],
-        wallpaperWidth: CGFloat,
-        rowHeight: CGFloat
-    ) -> some View {
-        let count = max(1, rowPlaces.count)
-        let tileWidth = wallpaperWidth / CGFloat(count)
-
-        HStack(spacing: 0) {
-            ForEach(0..<rowPlaces.count, id: \.self) { idx in
-
-if let photo = unlockedPhotos[rowPlaces[idx]] {
-wallpaperPhotoTile(
-photo: photo,
-width: tileWidth,
-height: rowHeight
+private func downloadWallpaper(for region: SingaporeRegion) {
+var fullResPhotos: [String: UIImage] = [:]
+for memory in tripStore.memories where fullResPhotos[memory.placeName] == nil {
+if let img = UIImage(data: memory.imageData) {
+fullResPhotos[memory.placeName] = img
+}
+}
+let metrics = PuzzleGridMetrics(places: region.placeNames)
+let wallpaperWidth: CGFloat = 1170
+let wallpaperHeight: CGFloat = 2532
+let rowHeight = wallpaperHeight / CGFloat(metrics.rows)
+let wallpaperView = VStack(spacing: 0) {
+ForEach(0..<metrics.rows, id: \.self) { row in
+wallpaperRow(
+rowPlaces: metrics.itemsInRow(row),
+fullResPhotos: fullResPhotos,
+wallpaperWidth: wallpaperWidth,
+rowHeight: rowHeight
 )
+}
+}
+.frame(width: wallpaperWidth, height: wallpaperHeight)
+let renderer = ImageRenderer(content: wallpaperView)
+renderer.scale = 1.0
+guard let wallpaper = renderer.uiImage else { return }
+PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+DispatchQueue.main.async {
+switch status {
+case .authorized, .limited:
+UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
+alertTitle = region.rawValue + " Wallpaper Downloaded!"
+alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
+showAlert = true
+case .denied, .restricted:
+alertTitle = "Photo Access Needed"
+alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
+showAlert = true
+default:
+break
 }
 }
 }
 }
 @ViewBuilder
-private func wallpaperPhotoTile(photo: UIImage, width: CGFloat, height: CGFloat) -> some View {
-ZStack {
+private func wallpaperRow(
+rowPlaces: [String],
+fullResPhotos: [String: UIImage],
+wallpaperWidth: CGFloat,
+rowHeight: CGFloat
+) -> some View {
+let count = max(1, rowPlaces.count)
+let tileWidth = wallpaperWidth / CGFloat(count)
+HStack(spacing: 0) {
+ForEach(0..<rowPlaces.count, id: \.self) { idx in
+if let photo = fullResPhotos[rowPlaces[idx]] {
 Image(uiImage: photo)
 .resizable()
 .scaledToFill()
-.frame(width: width, height: height)
-.blur(radius: 36)
-.overlay(Color.black.opacity(0.25))
-Image(uiImage: photo)
-.resizable()
-.scaledToFit()
-.frame(width: width, height: height)
-}
-.frame(width: width, height: height)
+.frame(width: tileWidth, height: rowHeight)
 .clipped()
+}
+}
+}
 }
 }
 // MARK: - 5. FULL-SCREEN REGIONAL PUZZLE PAGE
 struct FullScreenRegionalPuzzlePage: View {
 let region: SingaporeRegion
-let unlockedPhotos: [String: UIImage]
+let thumbnails: [String: UIImage]
 let onDownload: () -> Void
 private var places: [String] { region.placeNames }
 private var unlockedCount: Int {
-places.filter { unlockedPhotos[$0] != nil }.count
+places.filter { thumbnails[$0] != nil }.count
 }
 private var isComplete: Bool {
 unlockedCount == places.count && !places.isEmpty
@@ -400,6 +448,7 @@ spacing: spacing
 )
 }
 }
+.drawingGroup()
 .clipShape(RoundedRectangle(cornerRadius: 24))
 .overlay(
 RoundedRectangle(cornerRadius: 24)
@@ -447,7 +496,7 @@ bottomTab: Bool,
 leftTab: Bool,
 isCompact: Bool
 ) -> some View {
-let photo = unlockedPhotos[placeName]
+let photo = thumbnails[placeName]
 let shape = JigsawPieceShape(
 hasTopTab: topTab,
 hasRightTab: rightTab,
@@ -457,7 +506,11 @@ isAssembled: isComplete
 )
 ZStack {
 if let photo {
-unlockedTileContent(photo: photo, width: width, height: height)
+Image(uiImage: photo)
+.resizable()
+.scaledToFill()
+.frame(width: width, height: height)
+.clipped()
 } else {
 lockedTileContent(placeName: placeName, isCompact: isCompact)
 }
@@ -466,26 +519,10 @@ lockedTileContent(placeName: placeName, isCompact: isCompact)
 .clipShape(shape)
 .overlay(
 shape.stroke(
-isComplete ? Color.clear : Color.white.opacity(0.75),
+isComplete ? Color.clear : Color.primary.opacity(0.25),
 lineWidth: 1.5
 )
 )
-}
-@ViewBuilder
-private func unlockedTileContent(photo: UIImage, width: CGFloat, height: CGFloat) -> some View {
-ZStack {
-Image(uiImage: photo)
-.resizable()
-.scaledToFill()
-.frame(width: width, height: height)
-.blur(radius: 18)
-.overlay(Color.black.opacity(0.25))
-Image(uiImage: photo)
-.resizable()
-.scaledToFit()
-.frame(width: width, height: height)
-}
-.clipped()
 }
 @ViewBuilder
 private func lockedTileContent(placeName: String, isCompact: Bool) -> some View {
