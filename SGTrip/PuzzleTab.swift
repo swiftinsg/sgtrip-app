@@ -1,5 +1,3 @@
-
-//shivika
 import SwiftUI
 import UIKit
 import Photos
@@ -210,6 +208,7 @@ struct PuzzleTab: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
+    @State private var noticeMessage: String?
 
     private var unlockedPlaceSet: Set<String> {
         Set(tripStore.memories.map(\.placeName))
@@ -239,10 +238,18 @@ struct PuzzleTab: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
+            .overlay(alignment: .top) {
+                if let noticeMessage {
+                    noticeBanner(noticeMessage)
+                }
+            }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("SG Puzzles")
             .navigationBarTitleDisplayMode(.inline)
             .statusBarHidden(true)
+            .onChange(of: selectedRegion) { _, newRegion in
+                showEmptyRegionNoticeIfNeeded(for: newRegion)
+            }
             .task(id: memoriesSignature) {
                 await refreshThumbnailCache()
             }
@@ -266,6 +273,50 @@ struct PuzzleTab: View {
 
         if !Task.isCancelled {
             cachedThumbnails = updated
+        }
+    }
+
+    // MARK: - EMPTY REGION NOTIFICATION BANNER
+
+    @ViewBuilder
+    private func noticeBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .foregroundStyle(.white)
+
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(selectedRegion.accentColor.gradient, in: Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+        .padding(.top, 44)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    /// Pops up a notification when the swiped-to region page has no unlocked puzzles yet.
+    private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
+        let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
+
+        guard !hasUnlockedPlace else {
+            withAnimation(.easeOut(duration: 0.25)) {
+                noticeMessage = nil
+            }
+            return
+        }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            noticeMessage = "visit places to unlock more puzzles"
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+
+            withAnimation(.easeOut(duration: 0.25)) {
+                noticeMessage = nil
+            }
         }
     }
 
