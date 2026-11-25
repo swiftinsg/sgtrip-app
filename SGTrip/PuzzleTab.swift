@@ -1,3 +1,4 @@
+
 import SwiftUI
 import UIKit
 import Photos
@@ -197,6 +198,78 @@ struct JigsawPieceShape: Shape {
     }
 }
 
+// MARK: - 3B. CONFETTI RAIN ANIMATION VIEW (3 SECONDS)
+
+struct ConfettiRainView: UIViewRepresentable {
+    func makeUIView(context: Context) -> ConfettiContainerView {
+        let view = ConfettiContainerView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: ConfettiContainerView, context: Context) {}
+
+    final class ConfettiContainerView: UIView {
+        private let emitter = CAEmitterLayer()
+        private var hasStarted = false
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            emitter.frame = bounds
+            emitter.emitterPosition = CGPoint(x: bounds.midX, y: -10)
+            emitter.emitterSize = CGSize(width: bounds.width, height: 1)
+
+            if !hasStarted && bounds.width > 0 {
+                hasStarted = true
+                startConfetti()
+            }
+        }
+
+        private func startConfetti() {
+            emitter.emitterShape = .line
+
+            let colors: [UIColor] = [
+                .systemRed, .systemOrange, .systemYellow,
+                .systemGreen, .systemTeal, .systemBlue, .systemPurple, .systemPink
+            ]
+
+            emitter.emitterCells = colors.map { color in
+                let cell = CAEmitterCell()
+                cell.birthRate = 22
+                cell.lifetime = 3.0
+                cell.velocity = 260
+                cell.velocityRange = 80
+                cell.emissionLongitude = .pi
+                cell.emissionRange = .pi / 5
+                cell.spin = 3.5
+                cell.spinRange = 4.0
+                cell.scale = 0.55
+                cell.scaleRange = 0.25
+                cell.yAcceleration = 110
+                cell.contents = confettiPieceImage(color: color)?.cgImage
+                return cell
+            }
+
+            layer.addSublayer(emitter)
+
+            // Stop spawning after 1.2s so the rain finishes cleanly at 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.emitter.birthRate = 0
+            }
+        }
+
+        private func confettiPieceImage(color: UIColor) -> UIImage? {
+            let size = CGSize(width: 14, height: 8)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            return renderer.image { ctx in
+                color.setFill()
+                UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 2).fill()
+            }
+        }
+    }
+}
+
 // MARK: - 4. PUZZLE TAB VIEW
 
 struct PuzzleTab: View {
@@ -209,6 +282,8 @@ struct PuzzleTab: View {
     @State private var alertMessage = ""
     @State private var showAlert = false
     @State private var noticeMessage: String?
+    @State private var showConfetti = false
+    @State private var celebratedRegions: Set<SingaporeRegion> = []
 
     private var unlockedPlaceSet: Set<String> {
         Set(tripStore.memories.map(\.placeName))
@@ -216,6 +291,15 @@ struct PuzzleTab: View {
 
     private var memoriesSignature: [String] {
         tripStore.memories.map { "\($0.placeName)_\($0.imageData.count)" }
+    }
+
+    private var completedRegions: Set<SingaporeRegion> {
+        Set(
+            SingaporeRegion.allCases.filter { region in
+                let places = region.placeNames
+                return !places.isEmpty && places.allSatisfy { unlockedPlaceSet.contains($0) }
+            }
+        )
     }
 
     var body: some View {
@@ -236,147 +320,149 @@ struct PuzzleTab: View {
                         .tag(region)
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-            }
-            .overlay(alignment: .top) {
-                if let noticeMessage {
-                    noticeBanner(noticeMessage)
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("SG Puzzles")
-            .navigationBarTitleDisplayMode(.inline)
-            .statusBarHidden(true)
-            .onChange(of: selectedRegion) { _, newRegion in
-                showEmptyRegionNoticeIfNeeded(for: newRegion)
-            }
-            .task(id: memoriesSignature) {
-                await refreshThumbnailCache()
-            }
-            .alert(alertTitle, isPresented: $showAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(alertMessage)
-            }
-        }
-    }
 
-    private func refreshThumbnailCache() async {
-        let items = tripStore.memories.map { ($0.placeName, $0.imageData) }
-        var updated: [String: UIImage] = [:]
-
-        for (placeName, data) in items where updated[placeName] == nil {
-            if let thumb = await PuzzleImageCache.shared.thumbnail(for: placeName, data: data) {
-                updated[placeName] = thumb
-            }
-        }
-
-        if !Task.isCancelled {
-            cachedThumbnails = updated
-        }
-    }
-
-    // MARK: - EMPTY REGION NOTIFICATION BANNER
-
-    @ViewBuilder
-    private func noticeBanner(_ message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "lock.fill")
-                .foregroundStyle(.white)
-
-            Text(message)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(selectedRegion.accentColor.gradient, in: Capsule())
-        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
-        .padding(.top, 44)
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-
-    /// Pops up a notification when the swiped-to region page has no unlocked puzzles yet.
-    private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
-        let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
-
-        guard !hasUnlockedPlace else {
-            withAnimation(.easeOut(duration: 0.25)) {
-                noticeMessage = nil
-            }
-            return
-        }
-
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            noticeMessage = "visit places to unlock more puzzles"
-        }
-
-        Task {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-
-            withAnimation(.easeOut(duration: 0.25)) {
-                noticeMessage = nil
-            }
-        }
-    }
-
-    // MARK: - COMPACT REGION SELECTOR BAR
-
-    private var regionSelectorBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(SingaporeRegion.allCases) { region in
-                    regionChip(for: region)
-                }
-            }
-            .padding(.horizontal, 16)
-        }
-    }
-
-    @ViewBuilder
-    private func regionChip(for region: SingaporeRegion) -> some View {
-        let isSelected = selectedRegion == region
-        let regionPlaces = region.placeNames
-        let unlocked = regionPlaces.filter { unlockedPlaceSet.contains($0) }.count
-        let total = regionPlaces.count
-        let isDone = total > 0 && unlocked == total
-        let progressText = String(unlocked) + "/" + String(total)
-
-        Button {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                selectedRegion = region
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: isDone ? "checkmark.circle.fill" : region.iconName)
-                    .font(.caption2)
-
-                Text(region.rawValue)
-                    .font(.caption.weight(.semibold))
-
-                Text(progressText)
-                    .font(.caption2.weight(.bold))
-                    .opacity(0.85)
-            }
-            .foregroundStyle(isSelected ? .white : .primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                isSelected ? region.accentColor : Color(.secondarySystemGroupedBackground),
-                in: Capsule()
-            )
-            .overlay(
-                Capsule()
-                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532 CRISP FULL-RES)
-
-    @MainActor
-
+.tabViewStyle(.page(indexDisplayMode: .never))
+}
+.overlay(alignment: .top) {
+if let noticeMessage {
+noticeBanner(noticeMessage)
+}
+}
+.overlay {
+if showConfetti {
+ConfettiRainView()
+.ignoresSafeArea()
+.allowsHitTesting(false)
+}
+}
+.background(Color(.systemGroupedBackground))
+.navigationTitle("SG Puzzles")
+.navigationBarTitleDisplayMode(.inline)
+.statusBarHidden(true)
+.onChange(of: selectedRegion) { _, newRegion in
+showEmptyRegionNoticeIfNeeded(for: newRegion)
+checkAndTriggerConfetti(for: newRegion)
+}
+.onChange(of: completedRegions) { _, _ in
+checkAndTriggerConfetti(for: selectedRegion)
+}
+.task(id: memoriesSignature) {
+await refreshThumbnailCache()
+checkAndTriggerConfetti(for: selectedRegion)
+}
+.alert(alertTitle, isPresented: $showAlert) {
+Button("OK", role: .cancel) {}
+} message: {
+Text(alertMessage)
+}
+}
+}
+private func checkAndTriggerConfetti(for region: SingaporeRegion) {
+guard completedRegions.contains(region), !celebratedRegions.contains(region) else { return }
+celebratedRegions.insert(region)
+showConfetti = true
+Task {
+try? await Task.sleep(nanoseconds: 3_000_000_000)
+showConfetti = false
+}
+}
+private func refreshThumbnailCache() async {
+let items = tripStore.memories.map { ($0.placeName, $0.imageData) }
+var updated: [String: UIImage] = [:]
+for (placeName, data) in items where updated[placeName] == nil {
+if let thumb = await PuzzleImageCache.shared.thumbnail(for: placeName, data: data) {
+updated[placeName] = thumb
+}
+}
+if !Task.isCancelled {
+cachedThumbnails = updated
+}
+}
+// MARK: - EMPTY REGION NOTIFICATION BANNER
+@ViewBuilder
+private func noticeBanner(_ message: String) -> some View {
+HStack(spacing: 8) {
+Image(systemName: "lock.fill")
+.foregroundStyle(.white)
+Text(message)
+.font(.caption.weight(.semibold))
+.foregroundStyle(.white)
+}
+.padding(.horizontal, 14)
+.padding(.vertical, 10)
+.background(selectedRegion.accentColor.gradient, in: Capsule())
+.shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+.padding(.top, 44)
+.transition(.move(edge: .top).combined(with: .opacity))
+}
+/// Pops up a notification when the swiped-to region page has no unlocked puzzles yet.
+private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
+let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
+guard !hasUnlockedPlace else {
+withAnimation(.easeOut(duration: 0.25)) {
+noticeMessage = nil
+}
+return
+}
+withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+noticeMessage = "visit places to unlock more puzzles"
+}
+Task {
+try? await Task.sleep(nanoseconds: 2_500_000_000)
+withAnimation(.easeOut(duration: 0.25)) {
+noticeMessage = nil
+}
+}
+}
+// MARK: - COMPACT REGION SELECTOR BAR
+private var regionSelectorBar: some View {
+ScrollView(.horizontal, showsIndicators: false) {
+HStack(spacing: 8) {
+ForEach(SingaporeRegion.allCases) { region in
+regionChip(for: region)
+}
+}
+.padding(.horizontal, 16)
+}
+}
+@ViewBuilder
+private func regionChip(for region: SingaporeRegion) -> some View {
+let isSelected = selectedRegion == region
+let regionPlaces = region.placeNames
+let unlocked = regionPlaces.filter { unlockedPlaceSet.contains($0) }.count
+let total = regionPlaces.count
+let isDone = total > 0 && unlocked == total
+let progressText = String(unlocked) + "/" + String(total)
+Button {
+withAnimation(.easeInOut(duration: 0.25)) {
+selectedRegion = region
+}
+} label: {
+HStack(spacing: 5) {
+Image(systemName: isDone ? "checkmark.circle.fill" : region.iconName)
+.font(.caption2)
+Text(region.rawValue)
+.font(.caption.weight(.semibold))
+Text(progressText)
+.font(.caption2.weight(.bold))
+.opacity(0.85)
+}
+.foregroundStyle(isSelected ? .white : .primary)
+.padding(.horizontal, 12)
+.padding(.vertical, 7)
+.background(
+isSelected ? region.accentColor : Color(.secondarySystemGroupedBackground),
+in: Capsule()
+)
+.overlay(
+Capsule()
+.stroke(isSelected ? Color.clear : Color.primary.opacity(0.1), lineWidth: 1)
+)
+}
+.buttonStyle(.plain)
+}
+// MARK: - RENDER & DOWNLOAD REGIONAL WALLPAPER (1170 x 2532 CRISP FULL-RES)
+@MainActor
 private func downloadWallpaper(for region: SingaporeRegion) {
 var fullResPhotos: [String: UIImage] = [:]
 for memory in tripStore.memories where fullResPhotos[memory.placeName] == nil {

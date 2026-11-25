@@ -858,7 +858,7 @@ struct RecommendationTab: View {
                 Image(systemName: "location.north.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
-                Text("NEARBY CHALLENGE")
+                Text("NEXT CHALLENGE")
                     .font(.caption2)
                     .fontWeight(.bold)
                     .foregroundStyle(.secondary)
