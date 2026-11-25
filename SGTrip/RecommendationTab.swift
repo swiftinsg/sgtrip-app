@@ -1312,7 +1312,7 @@ struct LocationDetailView: View {
             .padding()
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            Text("We will check the place!")
+            Text("We will check your photo location !")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
