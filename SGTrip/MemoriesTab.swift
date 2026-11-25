@@ -121,21 +121,11 @@ struct MemoriesTab: View {
     private var mainContent: some View {
         if tripStore.memories.isEmpty {
             // EMPTY STATE - Displayed when user has no saved memories
-            VStack(spacing: 12) {
-                Image(systemName: "photo.on.rectangle")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-
-                Text("No memories yet")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                Text("Take photos at recommended locations to unlock memories")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding()
+            ContentUnavailableView(
+                "No memories yet",
+                systemImage: "photo.on.rectangle",
+                description: Text("Take photos at recommended locations to unlock memories")
+            )
         } else if filteredMemories.isEmpty {
             // EMPTY SEARCH STATE - Displayed when search returns no matches
             ContentUnavailableView.search(text: searchText)
