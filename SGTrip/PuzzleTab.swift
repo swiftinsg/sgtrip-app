@@ -53,8 +53,8 @@ actor PuzzleImageCache {
 
     private init() {}
 
-    func thumbnail(for placeName: String, data: Data) -> UIImage? {
-        let cacheKey = "\(placeName)_\(data.count)"
+    func thumbnail(for placeName: String, cacheKeySuffix: String, data: Data) -> UIImage? {
+        let cacheKey = "\(placeName)_\(cacheKeySuffix)"
         if let existing = cache[cacheKey] {
             return existing
         }
@@ -253,7 +253,6 @@ struct ConfettiRainView: UIViewRepresentable {
 
             layer.addSublayer(emitter)
 
-            // Stop spawning after 1.2s so the rain finishes cleanly at 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 self?.emitter.birthRate = 0
             }
@@ -283,14 +282,26 @@ struct PuzzleTab: View {
     @State private var showAlert = false
     @State private var noticeMessage: String?
     @State private var showConfetti = false
-    @State private var celebratedRegions: Set<SingaporeRegion> = []
+
+    // Persists across launches so confetti only plays once per completed region
+    @AppStorage("celebratedRegionsStorage") private var celebratedRegionsStorage: String = ""
+
+    private var celebratedRegions: Set<String> {
+        Set(celebratedRegionsStorage.split(separator: ",").map(String.init))
+    }
+
+    private func markRegionCelebrated(_ region: SingaporeRegion) {
+        var updated = celebratedRegions
+        updated.insert(region.rawValue)
+        celebratedRegionsStorage = updated.joined(separator: ",")
+    }
 
     private var unlockedPlaceSet: Set<String> {
         Set(tripStore.memories.map(\.placeName))
     }
 
     private var memoriesSignature: [String] {
-        tripStore.memories.map { "\($0.placeName)_\($0.imageData.count)" }
+        tripStore.memories.map { "\($0.placeName)_\($0.imageFilename)" }
     }
 
     private var completedRegions: Set<SingaporeRegion> {
@@ -310,17 +321,17 @@ struct PuzzleTab: View {
 
                 TabView(selection: $selectedRegion) {
                     ForEach(SingaporeRegion.allCases) { region in
-                        FullScreenRegionalPuzzlePage(
-                            region: region,
-                            thumbnails: cachedThumbnails,
-                            onDownload: {
-                                downloadWallpaper(for: region)
-                            }
-                        )
-                        .tag(region)
-                    }
-                }
 
+FullScreenRegionalPuzzlePage(
+region: region,
+thumbnails: cachedThumbnails,
+onDownload: {
+downloadWallpaper(for: region)
+}
+)
+.tag(region)
+}
+}
 .tabViewStyle(.page(indexDisplayMode: .never))
 }
 .overlay(alignment: .top) {
@@ -358,8 +369,11 @@ Text(alertMessage)
 }
 }
 private func checkAndTriggerConfetti(for region: SingaporeRegion) {
-guard completedRegions.contains(region), !celebratedRegions.contains(region) else { return }
-celebratedRegions.insert(region)
+guard completedRegions.contains(region),
+!celebratedRegions.contains(region.rawValue) else {
+return
+}
+markRegionCelebrated(region)
 showConfetti = true
 Task {
 try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -367,10 +381,16 @@ showConfetti = false
 }
 }
 private func refreshThumbnailCache() async {
-let items = tripStore.memories.map { ($0.placeName, $0.imageData) }
+let items = tripStore.memories.map { ($0.placeName, $0.imageFilename) }
 var updated: [String: UIImage] = [:]
-for (placeName, data) in items where updated[placeName] == nil {
-if let thumb = await PuzzleImageCache.shared.thumbnail(for: placeName, data: data) {
+for (placeName, filename) in items where updated[placeName] == nil {
+let fileURL = TripStore.photosDirectoryURL.appendingPathComponent(filename)
+if let data = try? Data(contentsOf: fileURL),
+let thumb = await PuzzleImageCache.shared.thumbnail(
+for: placeName,
+cacheKeySuffix: filename,
+data: data
+) {
 updated[placeName] = thumb
 }
 }
@@ -395,7 +415,6 @@ Text(message)
 .padding(.top, 44)
 .transition(.move(edge: .top).combined(with: .opacity))
 }
-/// Pops up a notification when the swiped-to region page has no unlocked puzzles yet.
 private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
 let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
 guard !hasUnlockedPlace else {
@@ -487,22 +506,37 @@ rowHeight: rowHeight
 .frame(width: wallpaperWidth, height: wallpaperHeight)
 let renderer = ImageRenderer(content: wallpaperView)
 renderer.scale = 1.0
-guard let wallpaper = renderer.uiImage else { return }
+guard let wallpaper = renderer.uiImage else {
+alertTitle = "Render Failed"
+alertMessage = "Could not generate the wallpaper image."
+showAlert = true
+return
+}
 PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-DispatchQueue.main.async {
 switch status {
 case .authorized, .limited:
-UIImageWriteToSavedPhotosAlbum(wallpaper, nil, nil, nil)
+PHPhotoLibrary.shared().performChanges({
+PHAssetChangeRequest.creationRequestForAsset(from: wallpaper)
+}) { success, error in
+DispatchQueue.main.async {
+if success {
 alertTitle = region.rawValue + " Wallpaper Downloaded!"
 alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
+} else {
+alertTitle = "Save Failed"
+alertMessage = error?.localizedDescription ?? "Unable to save wallpaper to your Photo Library."
+}
 showAlert = true
+}
+}
 case .denied, .restricted:
+DispatchQueue.main.async {
 alertTitle = "Photo Access Needed"
 alertMessage = "Please allow Photo Library access in iPhone Settings → SGTrip → Photos to download your wallpaper."
 showAlert = true
+}
 default:
 break
-}
 }
 }
 }

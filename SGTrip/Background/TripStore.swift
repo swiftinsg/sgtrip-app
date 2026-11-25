@@ -18,23 +18,30 @@ struct SavedMemory: Identifiable, Codable {
     let date: Date
     let latitude: Double
     let longitude: Double
-    let imageData: Data
+    let imageFilename: String
+
+    /// Loads the image bytes from disk on demand (keeps memories.json lightweight).
+    var imageData: Data {
+        let url = TripStore.photosDirectoryURL.appendingPathComponent(imageFilename)
+        return (try? Data(contentsOf: url)) ?? Data()
+    }
 
     init(
+        id: UUID = UUID(),
         placeName: String,
         locationDescription: String,
         date: Date,
         latitude: Double,
         longitude: Double,
-        imageData: Data
+        imageFilename: String
     ) {
-        self.id = UUID()
+        self.id = id
         self.placeName = placeName
         self.locationDescription = locationDescription
         self.date = date
         self.latitude = latitude
         self.longitude = longitude
-        self.imageData = imageData
+        self.imageFilename = imageFilename
     }
 }
 
@@ -70,12 +77,21 @@ struct RecommendedPlace: Identifiable, Hashable {
 @Observable
 class TripStore {
     var memories: [SavedMemory] = []
+    var storageErrorMessage: String?
+
+    /// Guards against overwriting memories.json if initial loading failed.
+    private var hasLoadedInitialState = false
+
+    static var documentsDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    static var photosDirectoryURL: URL {
+        documentsDirectory.appendingPathComponent("SavedMemories", isDirectory: true)
+    }
 
     private var memoriesFileURL: URL {
-        FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        )[0].appendingPathComponent("memories.json")
+        Self.documentsDirectory.appendingPathComponent("memories.json")
     }
 
     var promptedPlaces: [RecommendedPlace] = []
@@ -92,7 +108,7 @@ class TripStore {
                 coordinate: place.coordinate
             )
         }
-        loadMemories()
+        loadMemoriesAsync()
     }
 
     // MARK: - Prompt Management
@@ -136,7 +152,7 @@ class TripStore {
         }
     }
 
-    // MARK: - Memory Management
+    // MARK: - Memory Management (Separate Photo Files + Metadata JSON)
 
     func addMemory(
         placeName: String,
@@ -146,34 +162,87 @@ class TripStore {
         longitude: Double,
         imageData: Data
     ) {
-        let newMemory = SavedMemory(
-            placeName: placeName,
-            locationDescription: locationDescription,
-            date: date,
-            latitude: latitude,
-            longitude: longitude,
-            imageData: imageData
-        )
-        memories.insert(newMemory, at: 0)
-        saveMemories()
-    }
+        do {
+            try FileManager.default.createDirectory(
+                at: Self.photosDirectoryURL,
+                withIntermediateDirectories: true
+            )
 
-    private func loadMemories() {
-        guard let data = try? Data(contentsOf: memoriesFileURL),
-              let saved = try? JSONDecoder().decode([SavedMemory].self, from: data) else {
-            return
+            // Clean up any replaced photo files for the same place
+            let replacedMemories = memories.filter { $0.placeName == placeName }
+            for old in replacedMemories {
+                let oldURL = Self.photosDirectoryURL.appendingPathComponent(old.imageFilename)
+                try? FileManager.default.removeItem(at: oldURL)
+            }
+            memories.removeAll { $0.placeName == placeName }
+
+            let filename = UUID().uuidString + ".jpg"
+            let photoURL = Self.photosDirectoryURL.appendingPathComponent(filename)
+            try imageData.write(to: photoURL, options: .atomic)
+
+            let newMemory = SavedMemory(
+                placeName: placeName,
+                locationDescription: locationDescription,
+                date: date,
+                latitude: latitude,
+                longitude: longitude,
+                imageFilename: filename
+            )
+
+            memories.insert(newMemory, at: 0)
+            hasLoadedInitialState = true
+            try saveMemoriesMetadata()
+            storageErrorMessage = nil
+        } catch {
+            storageErrorMessage = "Failed to save memory: \(error.localizedDescription)"
+            print("TripStore save error:", error)
         }
-        memories = saved
     }
 
-    private func saveMemories() {
-        guard let data = try? JSONEncoder().encode(memories) else {
-            return
+    func deleteMemory(_ memory: SavedMemory) {
+        let photoURL = Self.photosDirectoryURL.appendingPathComponent(memory.imageFilename)
+        try? FileManager.default.removeItem(at: photoURL)
+        memories.removeAll { $0.id == memory.id }
+        try? saveMemoriesMetadata()
+    }
+
+    /// Reads lightweight metadata JSON off the main thread at launch.
+    private func loadMemoriesAsync() {
+        let fileURL = memoriesFileURL
+        Task.detached(priority: .userInitiated) {
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                await MainActor.run {
+                    self.hasLoadedInitialState = true
+                }
+                return
+            }
+
+            do {
+                let data = try Data(contentsOf: fileURL)
+                let decoded = try JSONDecoder().decode([SavedMemory].self, from: data)
+                await MainActor.run {
+                    self.memories = decoded
+                    self.hasLoadedInitialState = true
+                    self.storageErrorMessage = nil
+                }
+            } catch {
+                // Do NOT overwrite memories.json if decoding fails
+                await MainActor.run {
+                    self.hasLoadedInitialState = false
+                    self.storageErrorMessage = "Could not read saved memories: \(error.localizedDescription)"
+                    print("TripStore load error:", error)
+                }
+            }
         }
-        try? data.write(to: memoriesFileURL, options: .atomic)
     }
 
-    // MARK: - GPS Coordinate Extraction from Images
+    private func saveMemoriesMetadata() throws {
+        guard hasLoadedInitialState else { return }
+        let data = try JSONEncoder().encode(memories)
+        try data.write(to: memoriesFileURL, options: .atomic)
+    }
+
+    // MARK: - GPS Coordinate Extraction
 
     func extractCoordinate(from data: Data) -> CLLocationCoordinate2D? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
