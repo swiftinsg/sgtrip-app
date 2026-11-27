@@ -428,12 +428,6 @@ struct PuzzleTab: View {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             noticeMessage = "Visit places to unlock more puzzles"
         }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            withAnimation(.easeOut(duration: 0.25)) {
-                noticeMessage = nil
-            }
-        }
     }
 
     // MARK: - COMPACT REGION SELECTOR BAR
