@@ -279,6 +279,7 @@ struct PuzzleTab: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
+    @State private var noticeMessage: String?
     @State private var showConfetti = false
 
     // Persists across launches so confetti only plays once per completed region
@@ -331,6 +332,11 @@ struct PuzzleTab: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
+            .overlay(alignment: .top) {
+                if let noticeMessage {
+                    noticeBanner(noticeMessage)
+                }
+            }
             .overlay {
                 if showConfetti {
                     ConfettiRainView()
@@ -342,12 +348,14 @@ struct PuzzleTab: View {
             .navigationTitle("SG Puzzles")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedRegion) { _, newRegion in
+                showEmptyRegionNoticeIfNeeded(for: newRegion)
                 checkAndTriggerConfetti(for: newRegion)
             }
             .onChange(of: completedRegions) { _, _ in
                 checkAndTriggerConfetti(for: selectedRegion)
             }
             .task(id: memoriesSignature) {
+                showEmptyRegionNoticeIfNeeded(for: selectedRegion)
                 await refreshThumbnailCache()
                 checkAndTriggerConfetti(for: selectedRegion)
             }
@@ -389,6 +397,37 @@ struct PuzzleTab: View {
         }
         if !Task.isCancelled {
             cachedThumbnails = updated
+        }
+    }
+
+    // MARK: - EMPTY REGION NOTIFICATION BANNER
+    @ViewBuilder
+    private func noticeBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .foregroundStyle(.white)
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(selectedRegion.accentColor.gradient, in: Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+        .padding(.top, 44)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
+        let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
+        guard !hasUnlockedPlace else {
+            withAnimation(.easeOut(duration: 0.25)) {
+                noticeMessage = nil
+            }
+            return
+        }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            noticeMessage = "Visit places to unlock more puzzles"
         }
     }
 
