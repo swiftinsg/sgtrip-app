@@ -13,7 +13,7 @@ struct MemoriesTab: View {
     @State private var selectedPlace: Place?
     @State private var confirmationMessage: String?
     @State private var searchText = ""
-
+    
     // Filters memories by search text and sorts newest first
     private var filteredMemories: [SavedMemory] {
         let sorted = tripStore.memories.sorted { $0.date > $1.date }
@@ -27,20 +27,20 @@ struct MemoriesTab: View {
             }
         }
     }
-
+    
     // Uses the shared 43-place catalog so tapping any memory shows the exact prompt & coordinates
     private var knownPlaces: [Place] {
         PlaceCatalog.allPlaces
     }
-
+    
     private func place(for memory: SavedMemory) -> Place {
         if let matched = knownPlaces.first(where: { $0.name == memory.placeName }) {
             return matched
         }
-
+        
         let fallbackCoord = tripStore.extractCoordinate(from: memory.imageData)
-            ?? CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198)
-
+        ?? CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198)
+        
         return Place(
             name: memory.placeName,
             region: .central,
@@ -50,14 +50,14 @@ struct MemoriesTab: View {
             coordinate: fallbackCoord
         )
     }
-
+    
     private func completedPhoto(for place: Place) -> UIImage? {
         if let storedMemory = tripStore.memories.first(where: { $0.placeName == place.name }) {
             return UIImage(data: storedMemory.imageData)
         }
         return nil
     }
-
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
@@ -69,12 +69,12 @@ struct MemoriesTab: View {
                         isEnabled: !tripStore.memories.isEmpty,
                         searchText: $searchText
                     ))
-
+                
                 if let confirmationMessage {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.white)
-
+                        
                         Text(confirmationMessage)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.white)
@@ -92,40 +92,55 @@ struct MemoriesTab: View {
                     place: place,
                     isCompleted: true,
                     completedImage: completedPhoto(for: place),
-                    currentLocation: nil
-                ) { updatedMemory in
-                    let placeTitle = place.name
-                    let imageDataToSave = updatedMemory.rawImageData
-                        ?? updatedMemory.image.jpegData(compressionQuality: 0.9)
-
-                    if let imageData = imageDataToSave {
-                        tripStore.memories.removeAll { $0.placeName == placeTitle }
-
-                        tripStore.addMemory(
-                            placeName: updatedMemory.placeName,
-                            locationDescription: place.locationDescription,
-                            date: updatedMemory.dateTaken,
-                            latitude: updatedMemory.coordinate.latitude,
-                            longitude: updatedMemory.coordinate.longitude,
-                            imageData: imageData
-                        )
-
-                        showConfirmation(placeTitle + " photo replaced!")
+                    onSaveMemory: { updatedMemory in
+                        let placeTitle = place.name
+                        let imageDataToSave =
+                            updatedMemory.rawImageData
+                            ??
+                            updatedMemory.image
+                                .jpegData(compressionQuality: 0.9)
+                        
+                        if let imageData = imageDataToSave {
+                            tripStore.memories.removeAll {
+                                $0.placeName == placeTitle
+                            }
+                            
+                            tripStore.addMemory(
+                                placeName: updatedMemory.placeName,
+                                locationDescription: place.locationDescription,
+                                date: updatedMemory.dateTaken,
+                                latitude: updatedMemory.coordinate.latitude,
+                                longitude: updatedMemory.coordinate.longitude,
+                                imageData: imageData
+                            )
+                            
+                            showConfirmation(placeTitle + " photo replaced!")
+                        }
                     }
-                }
+                )
             }
         }
     }
-
+    
     @ViewBuilder
     private var mainContent: some View {
         if tripStore.memories.isEmpty {
             // EMPTY STATE - Displayed when user has no saved memories
-            ContentUnavailableView(
-                "No memories yet",
-                systemImage: "photo.on.rectangle",
-                description: Text("Take photos at recommended locations to unlock memories")
-            )
+            VStack(spacing: 12) {
+                Image(systemName: "photo.on.rectangle")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
+                
+                Text("No memories yet")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                
+                Text("Take photos at recommended locations to unlock memories")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
         } else if filteredMemories.isEmpty {
             // EMPTY SEARCH STATE - Displayed when search returns no matches
             ContentUnavailableView.search(text: searchText)
@@ -146,17 +161,17 @@ struct MemoriesTab: View {
             }
         }
     }
-
+    
     private func showConfirmation(_ text: String) {
         Task {
             try? await Task.sleep(nanoseconds: 250_000_000)
-
+            
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 confirmationMessage = text
             }
-
+            
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-
+            
             withAnimation(.easeOut(duration: 0.25)) {
                 confirmationMessage = nil
             }
@@ -212,14 +227,14 @@ struct MemoryCard: View {
                             .foregroundStyle(.secondary)
                     )
             }
-
+            
             // METADATA VERTICAL STACK - Place name and date below the image
             VStack(alignment: .leading, spacing: 4) {
                 Text(memory.placeName)
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-
+                
                 // WHERE the photo was taken.
                 HStack {
                     Image(systemName: "location.fill")
@@ -229,28 +244,27 @@ struct MemoryCard: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 // WHEN the photo was taken, including the time.
                 HStack {
                     Image(systemName: "calendar")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(memory.date.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 12)
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-        .padding(.horizontal)
-    }
+
+.font(.caption2)
+.foregroundStyle(.secondary)
 }
-
-
+}
+.padding(.horizontal, 8)
+.padding(.bottom, 12)
+}
+.background(Color(.systemBackground))
+.clipShape(RoundedRectangle(cornerRadius: 16))
+.shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+.padding(.horizontal)
+}
+}
 /// Preview provider for Xcode Canvas support.
 /// - Previews the MemoriesTab with an empty TripStore environment.
 struct MemoriesTab_Previews: PreviewProvider {
@@ -259,4 +273,5 @@ MemoriesTab()
 .environment(TripStore())
 }
 }
+
 
