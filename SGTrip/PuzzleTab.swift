@@ -197,7 +197,7 @@ struct JigsawPieceShape: Shape {
     }
 }
 
-// MARK: - 3B. CONFETTI RAIN ANIMATION VIEW (3 SECONDS)
+// MARK: - 3B. CONFETTI RAIN ANIMATION VIEW (LIGHT & CLEAN)
 
 struct ConfettiRainView: UIViewRepresentable {
     func makeUIView(context: Context) -> ConfettiContainerView {
@@ -235,24 +235,24 @@ struct ConfettiRainView: UIViewRepresentable {
 
             emitter.emitterCells = colors.map { color in
                 let cell = CAEmitterCell()
-                cell.birthRate = 22
+                cell.birthRate = 8
                 cell.lifetime = 3.0
-                cell.velocity = 260
-                cell.velocityRange = 80
+                cell.velocity = 240
+                cell.velocityRange = 70
                 cell.emissionLongitude = .pi
                 cell.emissionRange = .pi / 5
-                cell.spin = 3.5
-                cell.spinRange = 4.0
-                cell.scale = 0.55
-                cell.scaleRange = 0.25
-                cell.yAcceleration = 110
+                cell.spin = 3.0
+                cell.spinRange = 3.5
+                cell.scale = 0.45
+                cell.scaleRange = 0.2
+                cell.yAcceleration = 100
                 cell.contents = confettiPieceImage(color: color)?.cgImage
                 return cell
             }
 
             layer.addSublayer(emitter)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                 self?.emitter.birthRate = 0
             }
         }
@@ -279,7 +279,6 @@ struct PuzzleTab: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
-    @State private var noticeMessage: String?
     @State private var showConfetti = false
 
     // Persists across launches so confetti only plays once per completed region
@@ -332,11 +331,6 @@ struct PuzzleTab: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .overlay(alignment: .top) {
-                if let noticeMessage {
-                    noticeBanner(noticeMessage)
-                }
-            }
             .overlay {
                 if showConfetti {
                     ConfettiRainView()
@@ -348,7 +342,6 @@ struct PuzzleTab: View {
             .navigationTitle("SG Puzzles")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedRegion) { _, newRegion in
-                showEmptyRegionNoticeIfNeeded(for: newRegion)
                 checkAndTriggerConfetti(for: newRegion)
             }
             .onChange(of: completedRegions) { _, _ in
@@ -396,37 +389,6 @@ struct PuzzleTab: View {
         }
         if !Task.isCancelled {
             cachedThumbnails = updated
-        }
-    }
-
-    // MARK: - EMPTY REGION NOTIFICATION BANNER
-    @ViewBuilder
-    private func noticeBanner(_ message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "lock.fill")
-                .foregroundStyle(.white)
-            Text(message)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(selectedRegion.accentColor.gradient, in: Capsule())
-        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
-        .padding(.top, 44)
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-
-    private func showEmptyRegionNoticeIfNeeded(for region: SingaporeRegion) {
-        let hasUnlockedPlace = region.placeNames.contains { unlockedPlaceSet.contains($0) }
-        guard !hasUnlockedPlace else {
-            withAnimation(.easeOut(duration: 0.25)) {
-                noticeMessage = nil
-            }
-            return
-        }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            noticeMessage = "Visit places to unlock more puzzles"
         }
     }
 

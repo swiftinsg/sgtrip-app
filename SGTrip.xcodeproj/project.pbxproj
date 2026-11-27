@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D940EFA230B921EE00BB3F01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D940EFA130B921EE00BB3F01 /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F60718293A4B04 /* SGTrip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SGTrip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D940EFA130B921EE00BB3F01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -45,6 +50,7 @@
 		A1B2C3D4E5F60718293A4B02 = {
 			isa = PBXGroup;
 			children = (
+				D940EFA130B921EE00BB3F01 /* PrivacyInfo.xcprivacy */,
 				A1B2C3D4E5F60718293A4B05 /* SGTrip */,
 				A1B2C3D4E5F60718293A4B03 /* Products */,
 			);
@@ -122,6 +128,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D940EFA230B921EE00BB3F01 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,9 +277,9 @@
 				INFOPLIST_FILE = SGTrip/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SGTrip;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "here you are on the map and to suggest the nearest photo challenge and how far away it is";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SGTrip will use your location to locate where you are and recommend places that are nearby ";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "SGTrip saves your completed Singapore region puzzle wallpaper to your Photos library when you tap Download Wallpaper.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -313,9 +320,9 @@
 				INFOPLIST_FILE = SGTrip/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SGTrip;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "here you are on the map and to suggest the nearest photo challenge and how far away it is";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SGTrip will use your location to locate where you are and recommend places that are nearby ";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "SGTrip saves your completed Singapore region puzzle wallpaper to your Photos library when you tap Download Wallpaper.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

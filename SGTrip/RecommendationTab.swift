@@ -5,7 +5,6 @@ import CoreLocation
 import UIKit
 import PhotosUI
 import ImageIO
-import Observation
 
 // MARK: - 1. DATA MODELS
 
@@ -514,10 +513,10 @@ struct RecommendationTab: View {
             HStack(spacing: 6) {
                 Image(systemName: "trophy.fill")
                     .foregroundStyle(.orange)
-                Text("All Challenges Completed!")
+                Text("That's all from our app. Keep exploring!")
                     .font(.subheadline.weight(.bold))
             }
-            Text("You've explored every place in our app! Tap any green pin on the map to revisit or replace your photos.")
+            Text("Tap any green pin on the map to revisit or replace your photos.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -750,7 +749,6 @@ struct LocationDetailView: View {
         }
     }
 
-
     // MARK: Detail Subviews
     private var closeButton: some View {
         HStack {
@@ -771,7 +769,6 @@ struct LocationDetailView: View {
         .padding(.top, 8)
         .zIndex(10)
     }
-
 
     @ViewBuilder
     private var headerMediaSection: some View {
@@ -967,10 +964,7 @@ struct LocationDetailView: View {
     }
 }
 
-// MARK: - 6. SUPPORTING TYPES (Delete if already defined in another file)
-
-
-// MARK: - 7. PREVIEW
+// MARK: - 6. PREVIEW
 
 #Preview {
     RecommendationTab()
