@@ -79,9 +79,6 @@ class TripStore {
     var memories: [SavedMemory] = []
     var storageErrorMessage: String?
 
-    /// Guards against overwriting memories.json if initial loading failed.
-    private var hasLoadedInitialState = false
-
     static var documentsDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
@@ -98,6 +95,7 @@ class TripStore {
     var shownPlaceIDs: Set<UUID> = []
     var lastPromptDate: Date = Date()
 
+
     init() {
         promptedPlaces = PlaceCatalog.allPlaces.map { place in
             RecommendedPlace(
@@ -108,7 +106,7 @@ class TripStore {
                 coordinate: place.coordinate
             )
         }
-        loadMemoriesAsync()
+        loadMemories()
     }
 
     // MARK: - Prompt Management
@@ -205,38 +203,24 @@ class TripStore {
         try? saveMemoriesMetadata()
     }
 
-    /// Reads lightweight metadata JSON off the main thread at launch.
-    private func loadMemoriesAsync() {
+    private func loadMemories() {
         let fileURL = memoriesFileURL
-        Task.detached(priority: .userInitiated) {
-            guard FileManager.default.fileExists(atPath: fileURL.path) else {
-                await MainActor.run {
-                    self.hasLoadedInitialState = true
-                }
-                return
-            }
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return
+        }
 
-            do {
-                let data = try Data(contentsOf: fileURL)
-                let decoded = try JSONDecoder().decode([SavedMemory].self, from: data)
-                await MainActor.run {
-                    self.memories = decoded
-                    self.hasLoadedInitialState = true
-                    self.storageErrorMessage = nil
-                }
-            } catch {
-                // Do NOT overwrite memories.json if decoding fails
-                await MainActor.run {
-                    self.hasLoadedInitialState = false
-                    self.storageErrorMessage = "Could not read saved memories: \(error.localizedDescription)"
-                    print("TripStore load error:", error)
-                }
-            }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoded = try JSONDecoder().decode([SavedMemory].self, from: data)
+            self.memories = decoded
+            self.storageErrorMessage = nil
+        } catch {
+            self.storageErrorMessage = "Could not read saved memories: \(error.localizedDescription)"
+            print("TripStore load error:", error)
         }
     }
 
     private func saveMemoriesMetadata() throws {
-        guard hasLoadedInitialState else { return }
         let data = try JSONEncoder().encode(memories)
         try data.write(to: memoriesFileURL, options: .atomic)
     }

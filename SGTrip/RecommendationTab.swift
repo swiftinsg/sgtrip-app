@@ -1,4 +1,3 @@
-
 //shivika
 import SwiftUI
 import MapKit
@@ -6,6 +5,7 @@ import CoreLocation
 import UIKit
 import PhotosUI
 import ImageIO
+import Observation
 
 // MARK: - 1. DATA MODELS
 
@@ -62,7 +62,7 @@ enum PhotoMetadataExtractor {
     }
 }
 
-// MARK: - 3. SHARED SINGAPORE PLACE CATALOG (59 LOCATIONS)
+// MARK: - 3. SHARED SINGAPORE PLACE CATALOG (65 LOCATIONS)
 
 enum PlaceCatalog {
     static let allPlaces: [Place] = [
@@ -96,828 +96,883 @@ enum PlaceCatalog {
         Place(name: "Singapore Botanic Gardens", region: .central, infoType: "UNESCO World Heritage", locationDescription: "1 Cluny Road", photoPrompt: "Take a photo by Swan Lake, the Bandstand, or National Orchid Garden!", coordinate: CLLocationCoordinate2D(latitude: 1.3151, longitude: 103.8162)),
         Place(name: "Fort Canning Park", region: .central, infoType: "Historic & Nature", locationDescription: "River Valley Road", photoPrompt: "Snap a photo at the famous Tree Tunnel or Sang Nila Utama Garden!", coordinate: CLLocationCoordinate2D(latitude: 1.2944, longitude: 103.8469)),
         Place(name: "Kampong Gelam", region: .central, infoType: "Cultural & Historic", locationDescription: "Muscat Street / Haji Lane", photoPrompt: "Capture the golden dome of Sultan Mosque or colourful street murals!", coordinate: CLLocationCoordinate2D(latitude: 1.3023, longitude: 103.8592)),
-Place(name: "Chinatown", region: .central, infoType: "Cultural & Culinary", locationDescription: "Pagoda Street / Smith Street", photoPrompt: "Snap a photo of the heritage shophouses, lanterns, or Buddha Tooth Relic Temple!", coordinate: CLLocationCoordinate2D(latitude: 1.2820, longitude: 103.8448)),
-Place(name: "Little India", region: .central, infoType: "Cultural & Culinary", locationDescription: "Serangoon Road / Buffalo Road", photoPrompt: "Take a photo of the vibrant shophouses, flower garlands, or Tekka Centre!", coordinate: CLLocationCoordinate2D(latitude: 1.3061, longitude: 103.8507)),
-Place(name: "Tiong Bahru Estate", region: .central, infoType: "Art Deco Heritage", locationDescription: "Tiong Poh Road / Seng Poh Road", photoPrompt: "Snap a photo of the pre-war Art Deco flats or spiral staircases!", coordinate: CLLocationCoordinate2D(latitude: 1.2836, longitude: 103.8340)),
-Place(name: "Burma Social", region: .central, infoType: "Burmese & Pan-Asian", locationDescription: "34 Tras Street, Tanjong Pagar", photoPrompt: "Snap a photo of your Burmese tea leaf salad or heritage shophouse exterior!", coordinate: CLLocationCoordinate2D(latitude: 1.2788, longitude: 103.8443)),
-Place(name: "Masjid Haji Muhammad Salleh & Maqam Habib Noh", region: .central, infoType: "Islamic Heritage", locationDescription: "37 Palmer Road", photoPrompt: "Take a photo of the historic hilltop shrine and mosque!", coordinate: CLLocationCoordinate2D(latitude: 1.2728, longitude: 103.8474)),
-Place(name: "Fuk Tak Chi Museum", region: .central, infoType: "Historic Temple Museum", locationDescription: "76 Telok Ayer Street", photoPrompt: "Capture the oldest Chinese temple facade along Telok Ayer Street!", coordinate: CLLocationCoordinate2D(latitude: 1.2829, longitude: 103.8488)),
-Place(name: "Sri Layan Sithi Vinayagar Temple", region: .central, infoType: "Hindu Heritage", locationDescription: "73 Keong Saik Road", photoPrompt: "Snap a photo of the colourful 5-tier gopuram amidst Keong Saik shophouses!", coordinate: CLLocationCoordinate2D(latitude: 1.2814, longitude: 103.8417)),
-// MARK: East Singapore
-Place(name: "Tampines Eco Green", region: .east, infoType: "Nature & Birdwatching", locationDescription: "Tampines Ave 9 & Ave 12", photoPrompt: "Snap a photo of the eco-toilets, bird hides, or open grasslands!", coordinate: CLLocationCoordinate2D(latitude: 1.3638, longitude: 103.9482)),
-Place(name: "Lorong Halus Wetland", region: .east, infoType: "Nature & Scenic", locationDescription: "326 Lorong Halus", photoPrompt: "Take a photo along the red Lorong Halus Bridge or reed beds!", coordinate: CLLocationCoordinate2D(latitude: 1.3789, longitude: 103.9275)),
-Place(name: "Tampines Changkat Butterfly Garden", region: .east, infoType: "Nature & Community", locationDescription: "124 Tampines Street 11", photoPrompt: "Capture a close-up of a butterfly or blooming nectar plants!", coordinate: CLLocationCoordinate2D(latitude: 1.3456, longitude: 103.9478)),
-Place(name: "Pasir Ris Park Maze Garden & Bird Watching Tower", region: .east, infoType: "Nature & Wildlife", locationDescription: "Pasir Ris Central / Elias Road", photoPrompt: "Take a photo from the 3-storey bird watching tower or inside the hedge maze!", coordinate: CLLocationCoordinate2D(latitude: 1.3806, longitude: 103.9495)),
-Place(name: "Changi Point Coastal Walk", region: .east, infoType: "Coastal & Scenic", locationDescription: "6 Changi Village Road", photoPrompt: "Snap a scenic coastal view along the boardwalk or at Sunset Walk!", coordinate: CLLocationCoordinate2D(latitude: 1.3913, longitude: 103.9866)),
-Place(name: "Sensory Trail (Pulau Ubin)", region: .east, infoType: "Nature & Heritage", locationDescription: "220B Pulau Ubin", photoPrompt: "Take a photo of traditional kampong fruit trees, herbs, or mangroves!", coordinate: CLLocationCoordinate2D(latitude: 1.4036, longitude: 103.9720)),
-Place(name: "Pulau Ubin & Chek Jawa Wetlands", region: .east, infoType: "Nature & Wildlife", locationDescription: "Eastern Tip of Pulau Ubin", photoPrompt: "Snap a photo from the Jejawi Tower or along the coastal boardwalk!", coordinate: CLLocationCoordinate2D(latitude: 1.4105, longitude: 103.9905)),
-Place(name: "Siglap Canal Lookout Deck", region: .east, infoType: "Waterfront & Scenic", locationDescription: "East Coast Park / Siglap Canal Outfall", photoPrompt: "Take a photo overlooking the canal and sea breeze from the lookout deck!", coordinate: CLLocationCoordinate2D(latitude: 1.3054, longitude: 103.9278)),
-Place(name: "The Intan", region: .east, infoType: "Peranakan Heritage", locationDescription: "69 Joo Chiat Terrace", photoPrompt: "Snap a photo of intricate Peranakan beaded slippers or porcelain!", coordinate: CLLocationCoordinate2D(latitude: 1.3147, longitude: 103.9010)),
-Place(name: "Katong Antique House", region: .east, infoType: "Peranakan Heritage", locationDescription: "208 East Coast Road", photoPrompt: "Take a photo of the historic two-storey Peranakan shophouse facade!", coordinate: CLLocationCoordinate2D(latitude: 1.3073, longitude: 103.9072)),
-Place(name: "Eurasian Heritage Gallery", region: .east, infoType: "Cultural & Heritage", locationDescription: "139 Ceylon Road", photoPrompt: "Snap a photo at the Eurasian Community House or heritage exhibits!", coordinate: CLLocationCoordinate2D(latitude: 1.3095, longitude: 103.9019)),
-Place(name: "Joo Chiat & Katong Heritage Houses", region: .east, infoType: "Historic Architecture", locationDescription: "Koon Seng Road / Joo Chiat Road", photoPrompt: "Take a wide shot of the colourful pastel Peranakan shophouses!", coordinate: CLLocationCoordinate2D(latitude: 1.3113, longitude: 103.9011)),
-Place(name: "East Coast Park", region: .east, infoType: "Nature & Scenic", locationDescription: "East Coast Park Service Road", photoPrompt: "Explore the coastline and snap a photo by the beach or swaying palms!", coordinate: CLLocationCoordinate2D(latitude: 1.3040, longitude: 103.9264)),
-Place(name: "Changi Chapel and Museum", region: .east, infoType: "WWII History", locationDescription: "1000 Upper Changi Road North", photoPrompt: "Take a respectful photo of the Changi Chapel courtyard!", coordinate: CLLocationCoordinate2D(latitude: 1.3623, longitude: 103.9733)),
-Place(name: "Loyang Tua Pek Kong Temple", region: .east, infoType: "Multi-Faith Heritage", locationDescription: "20 Loyang Way", photoPrompt: "Snap a photo of the ornate temple architecture and lanterns!", coordinate: CLLocationCoordinate2D(latitude: 1.3711, longitude: 103.9699)),
-Place(name: "Sri Senpaga Vinayagar Temple", region: .east, infoType: "Hindu Heritage", locationDescription: "19 Ceylon Road", photoPrompt: "Capture the towering 21-metre golden Raja Gopuram entrance!", coordinate: CLLocationCoordinate2D(latitude: 1.3056, longitude: 103.9025)),
-Place(name: "Jewel Changi Airport", region: .east, infoType: "Iconic Architecture", locationDescription: "78 Airport Boulevard", photoPrompt: "Take a wide shot of the HSBC Rain Vortex indoor waterfall!", coordinate: CLLocationCoordinate2D(latitude: 1.3602, longitude: 103.9898)),
-// MARK: South Singapore
-Place(name: "Marina Barrage", region: .south, infoType: "Nature & Skyline", locationDescription: "8 Marina Gardens Drive", photoPrompt: "Take a wide shot of the Singapore skyline from the Green Roof!", coordinate: CLLocationCoordinate2D(latitude: 1.2805, longitude: 103.8711)),
-Place(name: "Mount Faber Peak", region: .south, infoType: "Scenic & Hilltop", locationDescription: "109 Mount Faber Road", photoPrompt: "Snap a photo of the cable cars, mini Merlion, or harbour panorama!", coordinate: CLLocationCoordinate2D(latitude: 1.2711, longitude: 103.8198)),
-Place(name: "Telok Blangah Hill Park & Alkaff Mansion", region: .south, infoType: "Heritage & Park", locationDescription: "10 Telok Blangah Green", photoPrompt: "Take a photo of the white European-style Alkaff Mansion or Terrace Garden!", coordinate: CLLocationCoordinate2D(latitude: 1.2790, longitude: 103.8130)),
-Place(name: "HortPark", region: .south, infoType: "Themed Gardens", locationDescription: "33 Hyderabad Road", photoPrompt: "Snap a photo in the themed gardens or vertical greenery displays!", coordinate: CLLocationCoordinate2D(latitude: 1.2780, longitude: 103.8010)),
-Place(name: "Gillman Barracks", region: .south, infoType: "Contemporary Art", locationDescription: "9 Lock Road", photoPrompt: "Take a photo of the colonial barracks buildings or outdoor art installations!", coordinate: CLLocationCoordinate2D(latitude: 1.2783, longitude: 103.8044)),
-Place(name: "Kent Ridge Park & Reflections at Bukit Chandu", region: .south, infoType: "WWII History & Canopy Walk", locationDescription: "31-K Pepys Road", photoPrompt: "Snap a photo of the restored black-and-white bungalow or Canopy Walk!", coordinate: CLLocationCoordinate2D(latitude: 1.2803, longitude: 103.7945)),
-Place(name: "Canterbury Park", region: .south, infoType: "Nature & Colonial", locationDescription: "Canterbury Road", photoPrompt: "Take a photo of the open green hillside or black-and-white colonial bungalows!", coordinate: CLLocationCoordinate2D(latitude: 1.2870, longitude: 103.7798)),
-Place(name: "Labrador Nature Reserve & Berlayer Creek", region: .south, infoType: "Coastal & Mangrove", locationDescription: "Labrador Villa Road", photoPrompt: "Snap a photo along the mangrove boardwalk or rocky coastal cliff!", coordinate: CLLocationCoordinate2D(latitude: 1.2658, longitude: 103.8019)),
-Place(name: "Keppel Coastal Trail", region: .south, infoType: "Coastal Boardwalk", locationDescription: "91 Labrador Villa Road", photoPrompt: "Take a photo along the elevated coastal forest boardwalk overlooking the sea!", coordinate: CLLocationCoordinate2D(latitude: 1.2645, longitude: 103.8035)),
-Place(name: "Keppel Hill Reservoir", region: .south, infoType: "Hidden Heritage", locationDescription: "11 Keppel Hill", photoPrompt: "Snap a photo of the historic abandoned reservoir trail!", coordinate: CLLocationCoordinate2D(latitude: 1.2707, longitude: 103.8172)),
-Place(name: "Masjid Temenggong Daeng Ibrahim", region: .south, infoType: "Historic Mosque", locationDescription: "30 Telok Blangah Road", photoPrompt: "Take a photo of the historic Johor state mosque in Telok Blangah!", coordinate: CLLocationCoordinate2D(latitude: 1.2663, longitude: 103.8243)),
-Place(name: "Sri Ruthra Kaliamman Temple", region: .south, infoType: "Hindu Heritage", locationDescription: "100 Depot Road", photoPrompt: "Snap a photo of the vibrant temple tower along Depot Road!", coordinate: CLLocationCoordinate2D(latitude: 1.2814, longitude: 103.8139)),
-Place(name: "Fort Siloso & Siloso Skywalk", region: .south, infoType: "WWII History & Skywalk", locationDescription: "Siloso Road, Sentosa", photoPrompt: "Take a photo 11 storeys up on the Skywalk or beside the coastal cannons!", coordinate: CLLocationCoordinate2D(latitude: 1.2581, longitude: 103.8105)),
-Place(name: "Tanjong Rimau (Sentosa)", region: .south, infoType: "Coastal Cliffs & Caves", locationDescription: "Western Tip of Sentosa", photoPrompt: "Snap a photo of the dramatic coastal cliffs and sea views at Sentosa's western tip!", coordinate: CLLocationCoordinate2D(latitude: 1.2595, longitude: 103.8075)),
-Place(name: "St. John's & Lazarus Islands", region: .south, infoType: "Southern Islands", locationDescription: "Southern Islands (via Marina South Pier)", photoPrompt: "Take a photo of the crescent white-sand lagoon or causeway bridge!", coordinate: CLLocationCoordinate2D(latitude: 1.2221, longitude: 103.8553)),
-Place(name: "Kusu Island (Da Bo Gong Temple & Malay Keramat)", region: .south, infoType: "Southern Islands & Heritage", locationDescription: "Kusu Island (via Marina South Pier)", photoPrompt: "Snap a photo of the tortoise sanctuary, temple, or hilltop keramat!", coordinate: CLLocationCoordinate2D(latitude: 1.2239, longitude: 103.8608))
-]
-}
-// MARK: - 4. RECOMMENDATION TAB
-struct RecommendationTab: View {
-@Environment(TripStore.self) private var tripStore
-@Environment(\.scenePhase) private var scenePhase
-@StateObject private var locationManager = LocationManager()
-@Namespace private var mapScope
-private static let defaultSingaporeRegion = MKCoordinateRegion(
-center: CLLocationCoordinate2D(latitude: 1.3450, longitude: 103.8250),
-span: MKCoordinateSpan(latitudeDelta: 0.28, longitudeDelta: 0.36)
-)
-private let places = PlaceCatalog.allPlaces
-@State private var selectedRegionFilter: SingaporeRegion?
-@State private var currentPrompt: Place?
-@State private var skippedPlaceNames: Set <String> = []
-@State private var hasLockedUserRecommendation = false
-@State private var selectedPlace: Place?
-@State private var savedMemories: [CapturedMemory] = []
-@State private var cameraPosition: MapCameraPosition = .region(defaultSingaporeRegion)
-@State private var confirmationMessage: String?
-@State private var showLocationDeniedAlert = false
-@State private var hasShownLocationDeniedAlert = false
-// MARK: Computed Helpers
-private var visiblePlaces: [Place] {
-guard let region = selectedRegionFilter else { return places }
-return places.filter { $0.region == region }
-}
-private var completedPlaceNames: Set<String> {
-Set(tripStore.memories.map(\.placeName))
-}
-private var incompletePlaces: [Place] {
-places.filter { !isPlaceCompleted($0) }
-}
-private func isPlaceCompleted(_ place: Place) -> Bool {
-completedPlaceNames.contains(place.name)
-}
-private func completedPhoto(for place: Place) -> UIImage? {
-if let localMemory = savedMemories.first(where: { $0.placeName == place.name }) {
-return localMemory.image
-}
-if let storedMemory = tripStore.memories.first(where: { $0.placeName == place.name }) {
-return UIImage(data: storedMemory.imageData)
-}
-return nil
-}
-private func formattedDistance(to place: Place) -> String? {
-guard let userLoc = locationManager.userLocation else { return nil }
-let placeLoc = CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
-let meters = userLoc.distance(from: placeLoc)
-return meters < 1000
-? "(Int(meters)) m away"
-: String(format: "%.1f km away", meters / 1000.0)
-}
-private func sortedPlacesByProximity(excluding excludedNames: Set<String> = []) -> [Place] {
-let candidates = places.filter { !excludedNames.contains($0.name) }
-guard let userLoc = locationManager.userLocation else { return candidates }
-return candidates.sorted { a, b in
-let locA = CLLocation(latitude: a.coordinate.latitude, longitude: a.coordinate.longitude)
-let locB = CLLocation(latitude: b.coordinate.latitude, longitude: b.coordinate.longitude)
-return userLoc.distance(from: locA) < userLoc.distance(from: locB)
-}
-}
-// MARK: Body
-var body: some View {
-NavigationStack {
-ZStack {
-tripMap
-.ignoresSafeArea()
-VStack(spacing: 8) {
-topOverlay
-Spacer()
-bottomControls
-}
-}
-.mapScope(mapScope)
-.toolbar(.hidden, for: .navigationBar)
-.alert("Location Features Disabled", isPresented: $showLocationDeniedAlert) {
-Button("Open Settings") {
-if let url = URL(string: UIApplication.openSettingsURLString) {
-UIApplication.shared.open(url)
-}
-}
-Button("Continue Without Location", role: .cancel) { }
-} message: {
-Text("Location access is disabled, so you won't get nearby place recommendations or distances. Showing general challenges instead.")
-}
-.sheet(item: $selectedPlace) { place in
-LocationDetailView(
-place: place,
-isCompleted: isPlaceCompleted(place),
-completedImage: completedPhoto(for: place)
-) { memory in
-handleSavedMemory(memory, for: place)
-}
-}
-.task {
-locationManager.startUpdatingLocation()
-checkLocationPermissionAndNotify()
-loadCurrentPrompt()
-await midnightRefreshLoop()
-}
-.onChange(of: scenePhase) { _, newPhase in
-if newPhase == .active {
-checkLocationPermissionAndNotify()
-}
-}
-.onChange(of: locationManager.userLocation) { _, newLocation in
-guard newLocation != nil, skippedPlaceNames.isEmpty, !hasLockedUserRecommendation else { return }
-loadCurrentPrompt()
-hasLockedUserRecommendation = true
-}
-}
-}
-// MARK: Overlays & Controls
-private var topOverlay: some View {
-VStack(spacing: 8) {
-promptCard
-.padding(14)
-.background(
-RoundedRectangle(cornerRadius: 20)
-.fill(Color(.secondarySystemBackground))
-.shadow(color: .black.opacity(0.15), radius: 8, y: 3)
-)
-.padding(.horizontal)
-.padding(.top, 8)
-regionFilterStrip
-if let confirmationMessage {
-confirmationToast(message: confirmationMessage)
-}
-}
-}
-private func confirmationToast(message: String) -> some View {
-HStack(spacing: 8) {
-Image(systemName: "checkmark.circle.fill")
-.foregroundStyle(.white)
-Text(message)
-.font(.caption.weight(.semibold))
-.foregroundStyle(.white)
-.multilineTextAlignment(.leading)
-}
-.padding(.horizontal, 16)
-.padding(.vertical, 12)
-.background(Color.green.gradient, in: RoundedRectangle(cornerRadius: 14))
-.padding(.horizontal, 16)
-.shadow(color: .black.opacity(0.22), radius: 6, y: 3)
-.transition(.move(edge: .top).combined(with: .opacity))
-}
-private var bottomControls: some View {
-HStack(alignment: .bottom) {
-HStack(spacing: 8) {
-MapCompass(scope: mapScope)
-.mapControlVisibility(.visible)
-MapScaleView(scope: mapScope)
-}
-Spacer()
-Button {
-withAnimation(.easeInOut(duration: 0.4)) {
-selectedRegionFilter = nil
-}
-resetMapToSingapore()
-} label: {
-Image(systemName: "arrow.counterclockwise")
-.font(.system(size: 16, weight: .semibold))
-.foregroundStyle(.primary)
-.frame(width: 42, height: 42)
-.background(.regularMaterial, in: Circle())
-.overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-.shadow(color: .black.opacity(0.18), radius: 6, y: 3)
-}
-.buttonStyle(.plain)
-.accessibilityLabel("Reset map to Singapore")
-}
-.padding(.horizontal, 16)
-.padding(.bottom, 12)
-}
-// MARK: Region Filter Strip
-private var regionFilterStrip: some View {
-ScrollView(.horizontal, showsIndicators: false) {
-HStack(spacing: 6) {
-regionChip(
-title: "All ((places.count))",
-icon: nil,
-isSelected: selectedRegionFilter == nil,
-activeColor: .primary
-) {
-withAnimation(.easeInOut(duration: 0.3)) {
-selectedRegionFilter = nil
-cameraPosition = .region(Self.defaultSingaporeRegion)
-}
-}
-ForEach(SingaporeRegion.allCases) { region in
-let count = places.filter { $0.region == region }.count
-regionChip(
-title: "(region.rawValue) ((count))",
-icon: region.iconName,
-isSelected: selectedRegionFilter == region,
-activeColor: region.accentColor
-) {
-withAnimation(.easeInOut(duration: 0.35)) {
-selectedRegionFilter = region
-focusCamera(on: region)
-}
-}
-}
-}
-.padding(.horizontal, 16)
-}
-}
-private func regionChip(
-title: String,
-icon: String?,
-isSelected: Bool,
-activeColor: Color,
-action: @escaping () -> Void
-) -> some View {
-Button(action: action) {
-HStack(spacing: 4) {
-if let icon {
-Image(systemName: icon)
-.font(.system(size: 10))
-}
-Text(title)
-.font(.caption2.weight(.semibold))
-}
-.foregroundStyle(isSelected ? (activeColor == .primary ? Color(.systemBackground) : .white) : .primary)
-.padding(.horizontal, 10)
-.padding(.vertical, 6)
-.background(
-isSelected ? AnyShapeStyle(activeColor) : AnyShapeStyle(.regularMaterial),
-in: Capsule()
-)
-.shadow(color: .black.opacity(0.1), radius: 3, y: 1)
-}
-.buttonStyle(.plain)
-}
-private func focusCamera(on region: SingaporeRegion) {
-let regionPlaces = places.filter { $0.region == region }
-guard !regionPlaces.isEmpty else { return }
-let lats = regionPlaces.map(\.coordinate.latitude)
-let lons = regionPlaces.map(\.coordinate.longitude)
-guard let minLat = lats.min(), let maxLat = lats.max(),
-let minLon = lons.min(), let maxLon = lons.max() else { return }
-let center = CLLocationCoordinate2D(
-latitude: (minLat + maxLat) / 2.0,
-longitude: (minLon + maxLon) / 2.0
-)
-let span = MKCoordinateSpan(
-latitudeDelta: max(0.04, (maxLat - minLat) * 1.45),
-longitudeDelta: max(0.04, (maxLon - minLon) * 1.45)
-)
-cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
-}
-// MARK: Prompt Card
-private var promptCard: some View {
-VStack(alignment: .leading, spacing: 6) {
-HStack(spacing: 6) {
-Image(systemName: locationManager.userLocation != nil ? "location.north.circle.fill" : "sparkles")
-.font(.caption)
-.foregroundStyle(.orange)
-Text(locationManager.userLocation != nil ? "NEARBY CHALLENGE" : "NEXT CHALLENGE")
-.font(.caption2.weight(.bold))
-.foregroundStyle(.secondary)
-if let prompt = currentPrompt, let distanceText = formattedDistance(to: prompt) {
-Text("• (distanceText)")
-.font(.caption2.weight(.semibold))
-.foregroundStyle(.orange)
-}
-Spacer()
-if currentPrompt != nil && incompletePlaces.count > 1 {
-Button {
-skipCurrentPrompt()
-} label: {
-Label("Skip", systemImage: "forward.fill")
-.font(.caption2.weight(.semibold))
-.foregroundStyle(.orange)
-.padding(.horizontal, 8)
-.padding(.vertical, 3)
-.background(Color.orange.opacity(0.12), in: Capsule())
-}
-.buttonStyle(.borderless)
-}
-}
-if let prompt = currentPrompt {
-activePromptDetails(for: prompt)
-} else {
-completedAllView
-}
-}
-.frame(maxWidth: .infinity, alignment: .leading)
-}
-private func activePromptDetails(for prompt: Place) -> some View {
-let completed = isPlaceCompleted(prompt)
-return VStack(alignment: .leading, spacing: 5) {
-HStack {
-Text(prompt.name)
-.font(.headline.weight(.bold))
-.lineLimit(1)
-if completed {
-Label("Completed", systemImage: "checkmark.circle.fill")
-.font(.caption2.weight(.semibold))
-.foregroundStyle(.green)
-.padding(.horizontal, 8)
-.padding(.vertical, 3)
-.background(Color.green.opacity(0.15), in: Capsule())
-}
-}
-Text(prompt.photoPrompt)
-.font(.caption)
-.foregroundStyle(.secondary)
-.fixedSize(horizontal: false, vertical: true)
-HStack(alignment: .center, spacing: 8) {
-HStack(alignment: .top, spacing: 4) {
-Image(systemName: "location.fill")
-.font(.caption2)
-.foregroundStyle(.secondary)
-.padding(.top, 1)
-Text(prompt.locationDescription)
-.font(.caption2)
-.foregroundStyle(.secondary)
-.fixedSize(horizontal: false, vertical: true)
-}
-Spacer(minLength: 8)
-if completed {
-Button {
-selectedPlace = prompt
-} label: {
-Label("View Photo", systemImage: "checkmark.circle.fill")
-.font(.caption2.weight(.semibold))
-}
-.buttonStyle(.bordered)
-.tint(.green)
-.controlSize(.small)
-} else {
-Button {
-selectedPlace = prompt
-} label: {
-Label("Choose Photo", systemImage: "photo")
-.font(.caption2.weight(.semibold))
-}
-.buttonStyle(.borderedProminent)
-.controlSize(.small)
-}
-}
-.padding(.top, 2)
-Divider().padding(.vertical, 2)
-mapLegend
-}
-}
-private var completedAllView: some View {
-VStack(alignment: .leading, spacing: 5) {
-HStack(spacing: 6) {
-Image(systemName: "trophy.fill")
-.foregroundStyle(.orange)
-Text("All (places.count) Challenges Completed!")
-.font(.subheadline.weight(.bold))
-}
-Text("You've explored every place in our app! Tap any green pin on the map to revisit or replace your photos.")
-.font(.caption)
-.foregroundStyle(.secondary)
-.fixedSize(horizontal: false, vertical: true)
-Divider().padding(.vertical, 2)
-mapLegend
-}
-}
-private var mapLegend: some View {
-HStack(spacing: 16) {
-Label("Recommended", systemImage: "mappin.circle.fill")
-.foregroundStyle(.red)
-Label("Visited", systemImage: "checkmark.circle.fill")
-.foregroundStyle(.green)
-Spacer()
-Text("(completedPlaceNames.count)/(places.count) Unlocked")
-.foregroundStyle(.secondary)
-}
-.font(.system(size: 10, weight: .medium))
-}
-// MARK: Map
-private var tripMap: some View {
-Map(position: $cameraPosition, scope: mapScope) {
-UserAnnotation()
-ForEach(visiblePlaces) { place in
-let completed = isPlaceCompleted(place)
-Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
-pinBadge(isCompleted: completed)
-.onTapGesture { selectedPlace = place }
-}
-.annotationTitles(.automatic)
-}
-ForEach(tripStore.memories) { memory in
-if !places.contains(where: { $0.name == memory.placeName }),
-let coordinate = tripStore.extractCoordinate(from: memory.imageData) {
-Annotation(memory.placeName, coordinate: coordinate, anchor: .bottom) {
-pinBadge(isCompleted: true)
-.onTapGesture {
-selectedPlace = Place(
-name: memory.placeName,
-region: .central,
-infoType: "Visited Place",
-locationDescription: memory.locationDescription,
-photoPrompt: "Memory captured at (memory.placeName)",
-coordinate: coordinate
-)
-}
-}
-.annotationTitles(.automatic)
-}
-}
-}
-.mapControls { }
-}
-private func pinBadge(isCompleted: Bool) -> some View {
-Image(systemName: isCompleted ? "checkmark.circle.fill" : "mappin.circle.fill")
-.font(.title2)
-.foregroundStyle(isCompleted ? .green : .red)
-.background(Color(.systemBackground))
-.clipShape(Circle())
-.shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-}
-// MARK: Actions & State Logic
-private func handleSavedMemory(_ memory: CapturedMemory, for place: Place) {
-let wasAlreadyCompleted = isPlaceCompleted(place)
-let placeTitle = place.name
-if let existingIndex = savedMemories.firstIndex(where: { $0.placeName == placeTitle }) {
-savedMemories[existingIndex] = memory
-} else {
-savedMemories.insert(memory, at: 0)
-}
-if let imageData = memory.rawImageData ?? memory.image.jpegData(compressionQuality: 0.9) {
-tripStore.addMemory(
-placeName: memory.placeName,
-locationDescription: place.locationDescription,
-date: memory.dateTaken,
-latitude: memory.coordinate.latitude,
-longitude: memory.coordinate.longitude,
-imageData: imageData
-)
-}
-if wasAlreadyCompleted {
-showConfirmation("Photo updated for (placeTitle)! Your memory has been saved.")
-} else {
-showConfirmation("Added to (placeTitle)! New jigsaw puzzle piece unlocked.")
-hasLockedUserRecommendation = false
-loadCurrentPrompt()
-}
-}
-private func showConfirmation(_ text: String) {
-Task {
-try? await Task.sleep(for: .milliseconds(250))
-withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-confirmationMessage = text
-}
-try? await Task.sleep(for: .seconds(3.2))
-withAnimation(.easeOut(duration: 0.3)) {
-if confirmationMessage == text {
-confirmationMessage = nil
-}
-}
-}
-}
-private func checkLocationPermissionAndNotify() {
-let status = CLLocationManager().authorizationStatus
-if (status == .denied || status == .restricted) && !hasShownLocationDeniedAlert {
-hasShownLocationDeniedAlert = true
-showLocationDeniedAlert = true
-}
-}
-private func resetMapToSingapore() {
-withAnimation(.easeInOut(duration: 0.5)) {
-cameraPosition = .region(Self.defaultSingaporeRegion)
-}
-}
-private func loadCurrentPrompt() {
-guard !incompletePlaces.isEmpty else {
-currentPrompt = nil
-return
-}
-let sortedPlaces = sortedPlacesByProximity(excluding: skippedPlaceNames)
-if let nearestIncomplete = sortedPlaces.first(where: { !isPlaceCompleted($0) }) {
-currentPrompt = nearestIncomplete
-} else {
-skippedPlaceNames.removeAll()
-currentPrompt = sortedPlacesByProximity().first(where: { !isPlaceCompleted($0) })
-}
-}
-private func skipCurrentPrompt() {
-guard !incompletePlaces.isEmpty else {
-currentPrompt = nil
-return
-}
-if let currentName = currentPrompt?.name {
-skippedPlaceNames.insert(currentName)
-}
-tripStore.skipPrompt()
-let sortedRemaining = sortedPlacesByProximity(excluding: skippedPlaceNames)
-if let next = sortedRemaining.first(where: { !isPlaceCompleted($0) }) {
-currentPrompt = next
-} else {
-skippedPlaceNames = currentPrompt.map { [$0.name] } ?? []
-currentPrompt = sortedPlacesByProximity(excluding: skippedPlaceNames)
-.first(where: { !isPlaceCompleted($0) })
-?? incompletePlaces.first
-}
-}
-private func midnightRefreshLoop() async {
-while !Task.isCancelled {
-let calendar = Calendar.current
-let now = Date()
-let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
-?? now.addingTimeInterval(86400)
-let secondsUntilMidnight = max(1, tomorrow.timeIntervalSince(now) + 1)
-do {
-try await Task.sleep(for: .seconds(secondsUntilMidnight))
-} catch {
-return
-}
-guard !Task.isCancelled else { return }
-skippedPlaceNames.removeAll()
-hasLockedUserRecommendation = false
-loadCurrentPrompt()
-}
-}
-}
-// MARK: - 5. LOCATION DETAIL VIEW
-struct LocationDetailView: View {
-@Environment(\.dismiss) private var dismiss
-let place: Place
-let isCompleted: Bool
-let completedImage: UIImage?
-var onSaveMemory: (CapturedMemory) -> Void
-@State private var detailCamera: MapCameraPosition
-@State private var selectedPhotoItem: PhotosPickerItem?
-@State private var verificationMessage: String?
-@State private var isVerificationError = false
-@State private var isCheckingMetadata = false
-private let maxAllowedDistanceMeters: Double = 500.0
-init(
-place: Place,
-isCompleted: Bool,
-completedImage: UIImage?,
-onSaveMemory: @escaping (CapturedMemory) -> Void
-) {
-self.place = place
-self.isCompleted = isCompleted
-self.completedImage = completedImage
-self.onSaveMemory = onSaveMemory
-_detailCamera = State(
-initialValue: .region(
-MKCoordinateRegion(
-center: place.coordinate,
-span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-)
-)
-)
-}
-var body: some View {
-VStack(spacing: 16) {
-closeButton
-headerMediaSection
-placeInfoSection
-statusBannerSection
-promptSection
-Text("We will check your photo location!")
-.font(.caption2)
-.foregroundStyle(.secondary)
-Spacer()
-}
-.padding()
-.onChange(of: selectedPhotoItem) { _, newItem in
-guard let newItem else { return }
-verifyAndSavePhoto(from: newItem)
-}
-}
-// MARK: Detail Subviews
-private var closeButton: some View {
-HStack {
-Spacer()
-Button { dismiss() } label: {
-Image(systemName: "xmark")
-.font(.headline)
-.foregroundStyle(.primary)
-.frame(width: 36, height: 36)
-.background(Color(.systemGray5))
-.clipShape(RoundedRectangle(cornerRadius: 8))
-}
-.buttonStyle(.plain)
-}
-}
-@ViewBuilder
-private var headerMediaSection: some View {
-if isCompleted, let completedImage {
-ZStack(alignment: .bottom) {
-Image(uiImage: completedImage)
-.resizable()
-.scaledToFill()
-.frame(maxWidth: .infinity)
-.frame(height: 200)
-.clipped()
-HStack {
-Label("Captured Memory", systemImage: "checkmark.seal.fill")
-.font(.caption.weight(.semibold))
-.foregroundStyle(.white)
-.padding(.horizontal, 10)
-.padding(.vertical, 6)
-.background(.ultraThinMaterial, in: Capsule())
-Spacer()
-PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
-HStack(spacing: 5) {
-if isCheckingMetadata {
-ProgressView().controlSize(.mini).tint(.white)
-} else {
-Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
-}
-Text(isCheckingMetadata ? "Checking..." : "Replace Photo")
-}
-.font(.caption.weight(.semibold))
-.foregroundStyle(.white)
-.padding(.horizontal, 12)
-.padding(.vertical, 6)
-.background(Color.blue.opacity(0.9), in: Capsule())
-.shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-}
-.disabled(isCheckingMetadata)
-}
-.padding(10)
-}
-.clipShape(RoundedRectangle(cornerRadius: 16))
-} else {
-Map(position: $detailCamera) {
-Marker(place.name, coordinate: place.coordinate)
-UserAnnotation()
-MapCircle(center: place.coordinate, radius: maxAllowedDistanceMeters)
-.foregroundStyle(Color.blue.opacity(0.15))
-.stroke(Color.blue, lineWidth: 2)
-}
-.frame(height: 180)
-.clipShape(RoundedRectangle(cornerRadius: 16))
-}
-}
-private var placeInfoSection: some View {
-VStack(alignment: .leading, spacing: 8) {
-HStack {
-Text(place.name)
-.font(.title2.bold())
-if isCompleted {
-Label("Completed", systemImage: "checkmark.seal.fill")
-.font(.caption.weight(.semibold))
-.foregroundStyle(.green)
-.padding(.horizontal, 10)
-.padding(.vertical, 4)
-.background(Color.green.opacity(0.15), in: Capsule())
-}
-}
-HStack(spacing: 4) {
-Image(systemName: "location.fill")
-.foregroundStyle(.secondary)
-Text(place.locationDescription)
-.font(.subheadline)
-.foregroundStyle(.secondary)
-}
-}
-.frame(maxWidth: .infinity, alignment: .leading)
-}
-@ViewBuilder
-private var statusBannerSection: some View {
-if let verificationMessage {
-HStack(spacing: 8) {
-Image(systemName: isVerificationError ? "xmark.octagon.fill" : "checkmark.shield.fill")
-.foregroundStyle(isVerificationError ? .red : .green)
-Text(verificationMessage)
-.font(.caption.weight(.medium))
-.foregroundStyle(isVerificationError ? .red : .green)
-Spacer()
-}
-.padding(10)
-.background(isVerificationError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-.clipShape(RoundedRectangle(cornerRadius: 10))
-} else if isCompleted {
-HStack(spacing: 8) {
-Image(systemName: "checkmark.circle.fill")
-.foregroundStyle(.green)
-Text("Challenge Completed! You have unlocked the (place.name) jigsaw piece.")
-.font(.caption.weight(.medium))
-.foregroundStyle(.green)
-Spacer()
-}
-.padding(10)
-.background(Color.green.opacity(0.12))
-.clipShape(RoundedRectangle(cornerRadius: 10))
-}
-}
-private var promptSection: some View {
-HStack {
-VStack(alignment: .leading, spacing: 6) {
-Text("Take Photo Prompt")
-.font(.caption.bold())
-.foregroundStyle(.secondary)
-Text(place.photoPrompt)
-.font(.subheadline)
-.foregroundStyle(.secondary)
-.padding(10)
-.frame(maxWidth: .infinity, alignment: .leading)
-.background(Color.gray.opacity(0.1))
-.clipShape(RoundedRectangle(cornerRadius: 10))
-}
-if isCompleted {
-Image(systemName: "checkmark.circle.fill")
-.font(.title2)
-.foregroundStyle(.white)
-.padding(14)
-.background(Color.green)
-.clipShape(RoundedRectangle(cornerRadius: 12))
-} else {
-PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
-Group {
-if isCheckingMetadata {
-ProgressView().tint(.white)
-} else {
-Image(systemName: "photo.badge.checkmark")
-.font(.title2)
-.foregroundStyle(.white)
-}
-}
-.padding(14)
-.background(Color.blue)
-.clipShape(RoundedRectangle(cornerRadius: 12))
-}
-.disabled(isCheckingMetadata)
-}
-}
-.padding()
-.background(Color(.systemGray6))
-.clipShape(RoundedRectangle(cornerRadius: 12))
-}
-// MARK: EXIF Verification
-private func verifyAndSavePhoto(from item: PhotosPickerItem) {
-isCheckingMetadata = true
-verificationMessage = nil
-Task {
-defer {
-isCheckingMetadata = false
-selectedPhotoItem = nil
-}
-guard let rawData = try? await item.loadTransferable(type: Data.self),
-let uiImage = UIImage(data: rawData) else {
-isVerificationError = true
-verificationMessage = "Could not load photo data. Please try another photo."
-return
-}
-guard let photoCoordinate = PhotoMetadataExtractor.extractCoordinate(from: rawData) else {
-isVerificationError = true
-verificationMessage = "Rejected: No GPS location metadata found in this photo. Enable Camera Location Services on your iPhone."
-return
-}
-let photoLoc = CLLocation(latitude: photoCoordinate.latitude, longitude: photoCoordinate.longitude)
-let placeLoc = CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
-let distanceMeters = Int(photoLoc.distance(from: placeLoc))
-guard Double(distanceMeters) <= maxAllowedDistanceMeters else {
-isVerificationError = true
-verificationMessage = "Rejected: Photo metadata shows it was taken (distanceMeters)m away from (place.name) (must be within 500m)."
-return
-}
-isVerificationError = false
-verificationMessage = "Verified! Photo metadata confirmed (distanceMeters)m from (place.name)."
-let memory = CapturedMemory(
-placeName: place.name,
-infoType: place.infoType,
-coordinate: photoCoordinate,
-image: uiImage,
-dateTaken: PhotoMetadataExtractor.extractDate(from: rawData) ?? Date(),
-rawImageData: rawData
-)
-onSaveMemory(memory)
-dismiss()
-}
-}
-}
-// MARK: - 6. PREVIEW
-#Preview {
-RecommendationTab()
-.environment(TripStore())
+        Place(name: "Chinatown", region: .central, infoType: "Cultural & Culinary", locationDescription: "Pagoda Street / Smith Street", photoPrompt: "Snap a photo of the heritage shophouses, lanterns, or Buddha Tooth Relic Temple!", coordinate: CLLocationCoordinate2D(latitude: 1.2820, longitude: 103.8448)),
+        Place(name: "Little India", region: .central, infoType: "Cultural & Culinary", locationDescription: "Serangoon Road / Buffalo Road", photoPrompt: "Take a photo of the vibrant shophouses, flower garlands, or Tekka Centre!", coordinate: CLLocationCoordinate2D(latitude: 1.3061, longitude: 103.8507)),
+        Place(name: "Tiong Bahru Estate", region: .central, infoType: "Art Deco Heritage", locationDescription: "Tiong Poh Road / Seng Poh Road", photoPrompt: "Snap a photo of the pre-war Art Deco flats or spiral staircases!", coordinate: CLLocationCoordinate2D(latitude: 1.2836, longitude: 103.8340)),
+        Place(name: "Burma Social", region: .central, infoType: "Burmese & Pan-Asian", locationDescription: "34 Tras Street, Tanjong Pagar", photoPrompt: "Snap a photo of your Burmese tea leaf salad or heritage shophouse exterior!", coordinate: CLLocationCoordinate2D(latitude: 1.2788, longitude: 103.8443)),
+        Place(name: "Masjid Haji Muhammad Salleh & Maqam Habib Noh", region: .central, infoType: "Islamic Heritage", locationDescription: "37 Palmer Road", photoPrompt: "Take a photo of the historic hilltop shrine and mosque!", coordinate: CLLocationCoordinate2D(latitude: 1.2728, longitude: 103.8474)),
+        Place(name: "Fuk Tak Chi Museum", region: .central, infoType: "Historic Temple Museum", locationDescription: "76 Telok Ayer Street", photoPrompt: "Capture the oldest Chinese temple facade along Telok Ayer Street!", coordinate: CLLocationCoordinate2D(latitude: 1.2829, longitude: 103.8488)),
+        Place(name: "Sri Layan Sithi Vinayagar Temple", region: .central, infoType: "Hindu Heritage", locationDescription: "73 Keong Saik Road", photoPrompt: "Snap a photo of the colourful 5-tier gopuram amidst Keong Saik shophouses!", coordinate: CLLocationCoordinate2D(latitude: 1.2814, longitude: 103.8417)),
+
+        // MARK: East Singapore
+        Place(name: "Tampines Eco Green", region: .east, infoType: "Nature & Birdwatching", locationDescription: "Tampines Ave 9 & Ave 12", photoPrompt: "Snap a photo of the eco-toilets, bird hides, or open grasslands!", coordinate: CLLocationCoordinate2D(latitude: 1.3638, longitude: 103.9482)),
+        Place(name: "Lorong Halus Wetland", region: .east, infoType: "Nature & Scenic", locationDescription: "326 Lorong Halus", photoPrompt: "Take a photo along the red Lorong Halus Bridge or reed beds!", coordinate: CLLocationCoordinate2D(latitude: 1.3789, longitude: 103.9275)),
+        Place(name: "Tampines Changkat Butterfly Garden", region: .east, infoType: "Nature & Community", locationDescription: "124 Tampines Street 11", photoPrompt: "Capture a close-up of a butterfly or blooming nectar plants!", coordinate: CLLocationCoordinate2D(latitude: 1.3456, longitude: 103.9478)),
+        Place(name: "Pasir Ris Park Maze Garden & Bird Watching Tower", region: .east, infoType: "Nature & Wildlife", locationDescription: "Pasir Ris Central / Elias Road", photoPrompt: "Take a photo from the 3-storey bird watching tower or inside the hedge maze!", coordinate: CLLocationCoordinate2D(latitude: 1.3806, longitude: 103.9495)),
+        Place(name: "Changi Point Coastal Walk", region: .east, infoType: "Coastal & Scenic", locationDescription: "6 Changi Village Road", photoPrompt: "Snap a scenic coastal view along the boardwalk or at Sunset Walk!", coordinate: CLLocationCoordinate2D(latitude: 1.3913, longitude: 103.9866)),
+        Place(name: "Sensory Trail (Pulau Ubin)", region: .east, infoType: "Nature & Heritage", locationDescription: "220B Pulau Ubin", photoPrompt: "Take a photo of traditional kampong fruit trees, herbs, or mangroves!", coordinate: CLLocationCoordinate2D(latitude: 1.4036, longitude: 103.9720)),
+        Place(name: "Pulau Ubin & Chek Jawa Wetlands", region: .east, infoType: "Nature & Wildlife", locationDescription: "Eastern Tip of Pulau Ubin", photoPrompt: "Snap a photo from the Jejawi Tower or along the coastal boardwalk!", coordinate: CLLocationCoordinate2D(latitude: 1.4105, longitude: 103.9905)),
+        Place(name: "Siglap Canal Lookout Deck", region: .east, infoType: "Waterfront & Scenic", locationDescription: "East Coast Park / Siglap Canal Outfall", photoPrompt: "Take a photo overlooking the canal and sea breeze from the lookout deck!", coordinate: CLLocationCoordinate2D(latitude: 1.3054, longitude: 103.9278)),
+        Place(name: "The Intan", region: .east, infoType: "Peranakan Heritage", locationDescription: "69 Joo Chiat Terrace", photoPrompt: "Snap a photo of intricate Peranakan beaded slippers or porcelain!", coordinate: CLLocationCoordinate2D(latitude: 1.3147, longitude: 103.9010)),
+        Place(name: "Katong Antique House", region: .east, infoType: "Peranakan Heritage", locationDescription: "208 East Coast Road", photoPrompt: "Take a photo of the historic two-storey Peranakan shophouse facade!", coordinate: CLLocationCoordinate2D(latitude: 1.3073, longitude: 103.9072)),
+        Place(name: "Eurasian Heritage Gallery", region: .east, infoType: "Cultural & Heritage", locationDescription: "139 Ceylon Road", photoPrompt: "Snap a photo at the Eurasian Community House or heritage exhibits!", coordinate: CLLocationCoordinate2D(latitude: 1.3095, longitude: 103.9019)),
+        Place(name: "Joo Chiat & Katong Heritage Houses", region: .east, infoType: "Historic Architecture", locationDescription: "Koon Seng Road / Joo Chiat Road", photoPrompt: "Take a wide shot of the colourful pastel Peranakan shophouses!", coordinate: CLLocationCoordinate2D(latitude: 1.3113, longitude: 103.9011)),
+        Place(name: "East Coast Park", region: .east, infoType: "Nature & Scenic", locationDescription: "East Coast Park Service Road", photoPrompt: "Explore the coastline and snap a photo by the beach or swaying palms!", coordinate: CLLocationCoordinate2D(latitude: 1.3040, longitude: 103.9264)),
+        Place(name: "Changi Chapel and Museum", region: .east, infoType: "WWII History", locationDescription: "1000 Upper Changi Road North", photoPrompt: "Take a respectful photo of the Changi Chapel courtyard!", coordinate: CLLocationCoordinate2D(latitude: 1.3623, longitude: 103.9733)),
+        Place(name: "Loyang Tua Pek Kong Temple", region: .east, infoType: "Multi-Faith Heritage", locationDescription: "20 Loyang Way", photoPrompt: "Snap a photo of the ornate temple architecture and lanterns!", coordinate: CLLocationCoordinate2D(latitude: 1.3711, longitude: 103.9699)),
+        Place(name: "Sri Senpaga Vinayagar Temple", region: .east, infoType: "Hindu Heritage", locationDescription: "19 Ceylon Road", photoPrompt: "Capture the towering 21-metre golden Raja Gopuram entrance!", coordinate: CLLocationCoordinate2D(latitude: 1.3056, longitude: 103.9025)),
+        Place(name: "Jewel Changi Airport", region: .east, infoType: "Iconic Architecture", locationDescription: "78 Airport Boulevard", photoPrompt: "Take a wide shot of the HSBC Rain Vortex indoor waterfall!", coordinate: CLLocationCoordinate2D(latitude: 1.3602, longitude: 103.9898)),
+
+        // MARK: South Singapore
+        Place(name: "Marina Barrage", region: .south, infoType: "Nature & Skyline", locationDescription: "8 Marina Gardens Drive", photoPrompt: "Take a wide shot of the Singapore skyline from the Green Roof!", coordinate: CLLocationCoordinate2D(latitude: 1.2805, longitude: 103.8711)),
+        Place(name: "Mount Faber Peak", region: .south, infoType: "Scenic & Hilltop", locationDescription: "109 Mount Faber Road", photoPrompt: "Snap a photo of the cable cars, mini Merlion, or harbour panorama!", coordinate: CLLocationCoordinate2D(latitude: 1.2711, longitude: 103.8198)),
+        Place(name: "Telok Blangah Hill Park & Alkaff Mansion", region: .south, infoType: "Heritage & Park", locationDescription: "10 Telok Blangah Green", photoPrompt: "Take a photo of the white European-style Alkaff Mansion or Terrace Garden!", coordinate: CLLocationCoordinate2D(latitude: 1.2790, longitude: 103.8130)),
+        Place(name: "HortPark", region: .south, infoType: "Themed Gardens", locationDescription: "33 Hyderabad Road", photoPrompt: "Snap a photo in the themed gardens or vertical greenery displays!", coordinate: CLLocationCoordinate2D(latitude: 1.2780, longitude: 103.8010)),
+        Place(name: "Gillman Barracks", region: .south, infoType: "Contemporary Art", locationDescription: "9 Lock Road", photoPrompt: "Take a photo of the colonial barracks buildings or outdoor art installations!", coordinate: CLLocationCoordinate2D(latitude: 1.2783, longitude: 103.8044)),
+        Place(name: "Kent Ridge Park & Reflections at Bukit Chandu", region: .south, infoType: "WWII History & Canopy Walk", locationDescription: "31-K Pepys Road", photoPrompt: "Snap a photo of the restored black-and-white bungalow or Canopy Walk!", coordinate: CLLocationCoordinate2D(latitude: 1.2803, longitude: 103.7945)),
+        Place(name: "Canterbury Park", region: .south, infoType: "Nature & Colonial", locationDescription: "Canterbury Road", photoPrompt: "Take a photo of the open green hillside or black-and-white colonial bungalows!", coordinate: CLLocationCoordinate2D(latitude: 1.2870, longitude: 103.7798)),
+        Place(name: "Labrador Nature Reserve & Berlayer Creek", region: .south, infoType: "Coastal & Mangrove", locationDescription: "Labrador Villa Road", photoPrompt: "Snap a photo along the mangrove boardwalk or rocky coastal cliff!", coordinate: CLLocationCoordinate2D(latitude: 1.2658, longitude: 103.8019)),
+        Place(name: "Keppel Coastal Trail", region: .south, infoType: "Coastal Boardwalk", locationDescription: "91 Labrador Villa Road", photoPrompt: "Take a photo along the elevated coastal forest boardwalk overlooking the sea!", coordinate: CLLocationCoordinate2D(latitude: 1.2645, longitude: 103.8035)),
+        Place(name: "Keppel Hill Reservoir", region: .south, infoType: "Hidden Heritage", locationDescription: "11 Keppel Hill", photoPrompt: "Snap a photo of the historic abandoned reservoir trail!", coordinate: CLLocationCoordinate2D(latitude: 1.2707, longitude: 103.8172)),
+        Place(name: "Masjid Temenggong Daeng Ibrahim", region: .south, infoType: "Historic Mosque", locationDescription: "30 Telok Blangah Road", photoPrompt: "Take a photo of the historic Johor state mosque in Telok Blangah!", coordinate: CLLocationCoordinate2D(latitude: 1.2663, longitude: 103.8243)),
+        Place(name: "Sri Ruthra Kaliamman Temple", region: .south, infoType: "Hindu Heritage", locationDescription: "100 Depot Road", photoPrompt: "Snap a photo of the vibrant temple tower along Depot Road!", coordinate: CLLocationCoordinate2D(latitude: 1.2814, longitude: 103.8139)),
+        Place(name: "Fort Siloso & Siloso Skywalk", region: .south, infoType: "WWII History & Skywalk", locationDescription: "Siloso Road, Sentosa", photoPrompt: "Take a photo 11 storeys up on the Skywalk or beside the coastal cannons!", coordinate: CLLocationCoordinate2D(latitude: 1.2581, longitude: 103.8105)),
+        Place(name: "Tanjong Rimau (Sentosa)", region: .south, infoType: "Coastal Cliffs & Caves", locationDescription: "Western Tip of Sentosa", photoPrompt: "Snap a photo of the dramatic coastal cliffs and sea views at Sentosa's western tip!", coordinate: CLLocationCoordinate2D(latitude: 1.2595, longitude: 103.8075)),
+        Place(name: "St. John's & Lazarus Islands", region: .south, infoType: "Southern Islands", locationDescription: "Southern Islands (via Marina South Pier)", photoPrompt: "Take a photo of the crescent white-sand lagoon or causeway bridge!", coordinate: CLLocationCoordinate2D(latitude: 1.2221, longitude: 103.8553)),
+        Place(name: "Kusu Island (Da Bo Gong Temple & Malay Keramat)", region: .south, infoType: "Southern Islands & Heritage", locationDescription: "Kusu Island (via Marina South Pier)", photoPrompt: "Snap a photo of the tortoise sanctuary, temple, or hilltop keramat!", coordinate: CLLocationCoordinate2D(latitude: 1.2239, longitude: 103.8608))
+    ]
 }
 
+// MARK: - 4. RECOMMENDATION TAB
+
+struct RecommendationTab: View {
+    @Environment(TripStore.self) private var tripStore
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var locationManager = LocationManager()
+    @Namespace private var mapScope
+
+    private static let defaultSingaporeRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 1.3450, longitude: 103.8250),
+        span: MKCoordinateSpan(latitudeDelta: 0.28, longitudeDelta: 0.36)
+    )
+
+    private let places = PlaceCatalog.allPlaces
+    @State private var selectedRegionFilter: SingaporeRegion?
+    @State private var currentPrompt: Place?
+    @State private var skippedPlaceNames: Set<String> = []
+    @State private var hasLockedUserRecommendation = false
+    @State private var selectedPlace: Place?
+    @State private var savedMemories: [CapturedMemory] = []
+    @State private var cameraPosition: MapCameraPosition = .region(defaultSingaporeRegion)
+    @State private var confirmationMessage: String?
+    @State private var showLocationDeniedAlert = false
+    @State private var hasShownLocationDeniedAlert = false
+
+    // MARK: Computed Helpers
+    private var visiblePlaces: [Place] {
+        guard let region = selectedRegionFilter else { return places }
+        return places.filter { $0.region == region }
+    }
+
+    private var completedPlaceNames: Set<String> {
+        Set(tripStore.memories.map(\.placeName))
+    }
+
+    private var incompletePlaces: [Place] {
+        places.filter { !isPlaceCompleted($0) }
+    }
+
+    private func isPlaceCompleted(_ place: Place) -> Bool {
+        completedPlaceNames.contains(place.name)
+    }
+
+    private func completedPhoto(for place: Place) -> UIImage? {
+        if let localMemory = savedMemories.first(where: { $0.placeName == place.name }) {
+            return localMemory.image
+        }
+        if let storedMemory = tripStore.memories.first(where: { $0.placeName == place.name }) {
+            return UIImage(data: storedMemory.imageData)
+        }
+        return nil
+    }
+
+    private func formattedDistance(to place: Place) -> String? {
+        guard let userLoc = locationManager.userLocation else { return nil }
+        let placeLoc = CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
+        let meters = userLoc.distance(from: placeLoc)
+        return meters < 1000
+            ? "\(Int(meters)) m away"
+            : String(format: "%.1f km away", meters / 1000.0)
+    }
+
+    private func sortedPlacesByProximity(excluding excludedNames: Set<String> = []) -> [Place] {
+        let candidates = places.filter { !excludedNames.contains($0.name) }
+        guard let userLoc = locationManager.userLocation else { return candidates }
+        return candidates.sorted { a, b in
+            let locA = CLLocation(latitude: a.coordinate.latitude, longitude: a.coordinate.longitude)
+            let locB = CLLocation(latitude: b.coordinate.latitude, longitude: b.coordinate.longitude)
+            return userLoc.distance(from: locA) < userLoc.distance(from: locB)
+        }
+    }
+
+    // MARK: Body
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                tripMap
+                    .ignoresSafeArea()
+                VStack(spacing: 8) {
+                    topOverlay
+                    Spacer()
+                    bottomControls
+                }
+            }
+            .mapScope(mapScope)
+            .toolbar(.hidden, for: .navigationBar)
+            .alert("Location Features Disabled", isPresented: $showLocationDeniedAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Continue Without Location", role: .cancel) { }
+            } message: {
+                Text("Location access is disabled, so you won't get nearby place recommendations or distances. Showing general challenges instead.")
+            }
+            .sheet(item: $selectedPlace) { place in
+                LocationDetailView(
+                    place: place,
+                    isCompleted: isPlaceCompleted(place),
+                    completedImage: completedPhoto(for: place)
+                ) { memory in
+                    handleSavedMemory(memory, for: place)
+                }
+            }
+            .task {
+                locationManager.startUpdatingLocation()
+                checkLocationPermissionAndNotify()
+                loadCurrentPrompt()
+                await midnightRefreshLoop()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    checkLocationPermissionAndNotify()
+                }
+            }
+            .onChange(of: locationManager.userLocation) { _, newLocation in
+                guard newLocation != nil, skippedPlaceNames.isEmpty, !hasLockedUserRecommendation else { return }
+                loadCurrentPrompt()
+                hasLockedUserRecommendation = true
+            }
+        }
+    }
+
+    // MARK: Overlays & Controls
+    private var topOverlay: some View {
+        VStack(spacing: 8) {
+            promptCard
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(.secondarySystemBackground))
+                        .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+                )
+                .padding(.horizontal)
+                .padding(.top, 8)
+            regionFilterStrip
+            if let confirmationMessage {
+                confirmationToast(message: confirmationMessage)
+            }
+        }
+    }
+
+    private func confirmationToast(message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.white)
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.green.gradient, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 16)
+        .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var bottomControls: some View {
+        HStack(alignment: .bottom) {
+            HStack(spacing: 8) {
+                MapCompass(scope: mapScope)
+                    .mapControlVisibility(.visible)
+                MapScaleView(scope: mapScope)
+            }
+            Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    selectedRegionFilter = nil
+                }
+                resetMapToSingapore()
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 42, height: 42)
+                    .background(.regularMaterial, in: Circle())
+                    .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Reset map to Singapore")
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: Region Filter Strip
+    private var regionFilterStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                regionChip(
+                    title: "All",
+                    icon: nil,
+                    isSelected: selectedRegionFilter == nil,
+                    activeColor: .primary
+                ) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        selectedRegionFilter = nil
+                        cameraPosition = .region(Self.defaultSingaporeRegion)
+                    }
+                }
+                ForEach(SingaporeRegion.allCases) { region in
+                    regionChip(
+                        title: region.rawValue,
+                        icon: region.iconName,
+                        isSelected: selectedRegionFilter == region,
+                        activeColor: region.accentColor
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            selectedRegionFilter = region
+                            focusCamera(on: region)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func regionChip(
+        title: String,
+        icon: String?,
+        isSelected: Bool,
+        activeColor: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 10))
+                }
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? (activeColor == .primary ? Color(.systemBackground) : .white) : .primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                isSelected ? AnyShapeStyle(activeColor) : AnyShapeStyle(.regularMaterial),
+                in: Capsule()
+            )
+            .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func focusCamera(on region: SingaporeRegion) {
+        let regionPlaces = places.filter { $0.region == region }
+        guard !regionPlaces.isEmpty else { return }
+        let lats = regionPlaces.map(\.coordinate.latitude)
+        let lons = regionPlaces.map(\.coordinate.longitude)
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return }
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2.0,
+            longitude: (minLon + maxLon) / 2.0
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: max(0.04, (maxLat - minLat) * 1.45),
+            longitudeDelta: max(0.04, (maxLon - minLon) * 1.45)
+        )
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+    }
+
+    // MARK: Prompt Card
+    private var promptCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: locationManager.userLocation != nil ? "location.north.circle.fill" : "sparkles")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                Text(locationManager.userLocation != nil ? "NEARBY CHALLENGE" : "NEXT CHALLENGE")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                if let prompt = currentPrompt, let distanceText = formattedDistance(to: prompt) {
+                    Text("• \(distanceText)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
+                Spacer()
+                if currentPrompt != nil && incompletePlaces.count > 1 {
+                    Button {
+                        skipCurrentPrompt()
+                    } label: {
+                        Label("Skip", systemImage: "forward.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            if let prompt = currentPrompt {
+                activePromptDetails(for: prompt)
+            } else {
+                completedAllView
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func activePromptDetails(for prompt: Place) -> some View {
+        let completed = isPlaceCompleted(prompt)
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(prompt.name)
+                    .font(.headline.weight(.bold))
+                    .lineLimit(1)
+                if completed {
+                    Label("Completed", systemImage: "checkmark.circle.fill")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.15), in: Capsule())
+                }
+            }
+            Text(prompt.photoPrompt)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .top, spacing: 4) {
+                    Image(systemName: "location.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 1)
+                    Text(prompt.locationDescription)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                if completed {
+                    Button {
+                        selectedPlace = prompt
+                    } label: {
+                        Label("View Photo", systemImage: "checkmark.circle.fill")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.green)
+                    .controlSize(.small)
+                } else {
+                    Button {
+                        selectedPlace = prompt
+                    } label: {
+                        Label("Choose Photo", systemImage: "photo")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.top, 2)
+            Divider().padding(.vertical, 2)
+            mapLegend
+        }
+    }
+
+    private var completedAllView: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                Image(systemName: "trophy.fill")
+                    .foregroundStyle(.orange)
+                Text("All Challenges Completed!")
+                    .font(.subheadline.weight(.bold))
+            }
+            Text("You've explored every place in our app! Tap any green pin on the map to revisit or replace your photos.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider().padding(.vertical, 2)
+            mapLegend
+        }
+    }
+
+    private var mapLegend: some View {
+        HStack(spacing: 16) {
+            Label("Recommended", systemImage: "mappin.circle.fill")
+                .foregroundStyle(.red)
+            Label("Visited", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Spacer()
+            Text("\(completedPlaceNames.count)/\(places.count) Unlocked")
+                .foregroundStyle(.secondary)
+        }
+        .font(.system(size: 10, weight: .medium))
+    }
+
+    // MARK: Map
+    private var tripMap: some View {
+        Map(position: $cameraPosition, scope: mapScope) {
+            UserAnnotation()
+            ForEach(visiblePlaces) { place in
+                let completed = isPlaceCompleted(place)
+                Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
+                    pinBadge(isCompleted: completed)
+                        .onTapGesture { selectedPlace = place }
+                }
+                .annotationTitles(.automatic)
+            }
+            ForEach(tripStore.memories) { memory in
+                if !places.contains(where: { $0.name == memory.placeName }),
+                   let coordinate = tripStore.extractCoordinate(from: memory.imageData) {
+                    Annotation(memory.placeName, coordinate: coordinate, anchor: .bottom) {
+                        pinBadge(isCompleted: true)
+                            .onTapGesture {
+                                selectedPlace = Place(
+                                    name: memory.placeName,
+                                    region: .central,
+                                    infoType: "Visited Place",
+                                    locationDescription: memory.locationDescription,
+                                    photoPrompt: "Memory captured at \(memory.placeName)",
+                                    coordinate: coordinate
+                                )
+                            }
+                    }
+                    .annotationTitles(.automatic)
+                }
+            }
+        }
+        .mapControls { }
+    }
+
+    private func pinBadge(isCompleted: Bool) -> some View {
+        Image(systemName: isCompleted ? "checkmark.circle.fill" : "mappin.circle.fill")
+            .font(.title2)
+            .foregroundStyle(isCompleted ? .green : .red)
+            .background(Color(.systemBackground))
+            .clipShape(Circle())
+            .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+    }
+
+    // MARK: Actions & State Logic
+    private func handleSavedMemory(_ memory: CapturedMemory, for place: Place) {
+        let wasAlreadyCompleted = isPlaceCompleted(place)
+        let placeTitle = place.name
+        if let existingIndex = savedMemories.firstIndex(where: { $0.placeName == placeTitle }) {
+            savedMemories[existingIndex] = memory
+        } else {
+            savedMemories.insert(memory, at: 0)
+        }
+        if let imageData = memory.rawImageData ?? memory.image.jpegData(compressionQuality: 0.9) {
+            tripStore.addMemory(
+                placeName: memory.placeName,
+                locationDescription: place.locationDescription,
+                date: memory.dateTaken,
+                latitude: memory.coordinate.latitude,
+                longitude: memory.coordinate.longitude,
+                imageData: imageData
+            )
+        }
+        if wasAlreadyCompleted {
+            showConfirmation("Photo updated for \(placeTitle)! Your memory has been saved.")
+        } else {
+            showConfirmation("Added to \(placeTitle)! New jigsaw puzzle piece unlocked.")
+            hasLockedUserRecommendation = false
+            loadCurrentPrompt()
+        }
+    }
+
+    private func showConfirmation(_ text: String) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                confirmationMessage = text
+            }
+            try? await Task.sleep(for: .seconds(3.2))
+            withAnimation(.easeOut(duration: 0.3)) {
+                if confirmationMessage == text {
+                    confirmationMessage = nil
+                }
+            }
+        }
+    }
+
+    private func checkLocationPermissionAndNotify() {
+        let status = CLLocationManager().authorizationStatus
+        if (status == .denied || status == .restricted) && !hasShownLocationDeniedAlert {
+            hasShownLocationDeniedAlert = true
+            showLocationDeniedAlert = true
+        }
+    }
+
+    private func resetMapToSingapore() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            cameraPosition = .region(Self.defaultSingaporeRegion)
+        }
+    }
+
+    private func loadCurrentPrompt() {
+        guard !incompletePlaces.isEmpty else {
+            currentPrompt = nil
+            return
+        }
+        let sortedPlaces = sortedPlacesByProximity(excluding: skippedPlaceNames)
+        if let nearestIncomplete = sortedPlaces.first(where: { !isPlaceCompleted($0) }) {
+            currentPrompt = nearestIncomplete
+        } else {
+            skippedPlaceNames.removeAll()
+            currentPrompt = sortedPlacesByProximity().first(where: { !isPlaceCompleted($0) })
+        }
+    }
+
+    private func skipCurrentPrompt() {
+        guard !incompletePlaces.isEmpty else {
+            currentPrompt = nil
+            return
+        }
+        if let currentName = currentPrompt?.name {
+            skippedPlaceNames.insert(currentName)
+        }
+        tripStore.skipPrompt()
+        let sortedRemaining = sortedPlacesByProximity(excluding: skippedPlaceNames)
+        if let next = sortedRemaining.first(where: { !isPlaceCompleted($0) }) {
+            currentPrompt = next
+        } else {
+            skippedPlaceNames = currentPrompt.map { [$0.name] } ?? []
+            currentPrompt = sortedPlacesByProximity(excluding: skippedPlaceNames)
+                .first(where: { !isPlaceCompleted($0) })
+                ?? incompletePlaces.first
+        }
+    }
+
+    private func midnightRefreshLoop() async {
+        while !Task.isCancelled {
+            let calendar = Calendar.current
+            let now = Date()
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+                ?? now.addingTimeInterval(86400)
+            let secondsUntilMidnight = max(1, tomorrow.timeIntervalSince(now) + 1)
+            do {
+                try await Task.sleep(for: .seconds(secondsUntilMidnight))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            skippedPlaceNames.removeAll()
+            hasLockedUserRecommendation = false
+            loadCurrentPrompt()
+        }
+    }
+}
+
+// MARK: - 5. LOCATION DETAIL VIEW
+
+struct LocationDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let place: Place
+    let isCompleted: Bool
+    let completedImage: UIImage?
+    var onSaveMemory: (CapturedMemory) -> Void
+
+    @State private var detailCamera: MapCameraPosition
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var verificationMessage: String?
+    @State private var isVerificationError = false
+    @State private var isCheckingMetadata = false
+
+    private let maxAllowedDistanceMeters: Double = 500.0
+
+    init(
+        place: Place,
+        isCompleted: Bool,
+        completedImage: UIImage?,
+        onSaveMemory: @escaping (CapturedMemory) -> Void
+    ) {
+        self.place = place
+        self.isCompleted = isCompleted
+        self.completedImage = completedImage
+        self.onSaveMemory = onSaveMemory
+        _detailCamera = State(
+            initialValue: .region(
+                MKCoordinateRegion(
+                    center: place.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                )
+            )
+        )
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            closeButton
+            headerMediaSection
+            placeInfoSection
+            statusBannerSection
+            promptSection
+            Text("We will check your photo location!")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding()
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            verifyAndSavePhoto(from: newItem)
+        }
+    }
+
+
+    // MARK: Detail Subviews
+    private var closeButton: some View {
+        HStack {
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 36, height: 36)
+                    .background(Color(.systemGray5), in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+        }
+        .padding(.top, 8)
+        .zIndex(10)
+    }
+
+
+    @ViewBuilder
+    private var headerMediaSection: some View {
+        if isCompleted, let completedImage {
+            ZStack(alignment: .bottom) {
+                Image(uiImage: completedImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipped()
+                HStack {
+                    Label("Captured Memory", systemImage: "checkmark.seal.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
+                    Spacer()
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                        HStack(spacing: 5) {
+                            if isCheckingMetadata {
+                                ProgressView().controlSize(.mini).tint(.white)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
+                            }
+                            Text(isCheckingMetadata ? "Checking..." : "Replace Photo")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.9), in: Capsule())
+                        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                    }
+                    .disabled(isCheckingMetadata)
+                }
+                .padding(10)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        } else {
+            Map(position: $detailCamera) {
+                Marker(place.name, coordinate: place.coordinate)
+                UserAnnotation()
+                MapCircle(center: place.coordinate, radius: maxAllowedDistanceMeters)
+                    .foregroundStyle(Color.blue.opacity(0.15))
+                    .stroke(Color.blue, lineWidth: 2)
+            }
+            .frame(height: 180)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    private var placeInfoSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(place.name)
+                    .font(.title2.bold())
+                if isCompleted {
+                    Label("Completed", systemImage: "checkmark.seal.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.15), in: Capsule())
+                }
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                    .foregroundStyle(.secondary)
+                Text(place.locationDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var statusBannerSection: some View {
+        if let verificationMessage {
+            HStack(spacing: 8) {
+                Image(systemName: isVerificationError ? "xmark.octagon.fill" : "checkmark.shield.fill")
+                    .foregroundStyle(isVerificationError ? .red : .green)
+                Text(verificationMessage)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(isVerificationError ? .red : .green)
+                Spacer()
+            }
+            .padding(10)
+            .background(isVerificationError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        } else if isCompleted {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Challenge Completed! You have unlocked the \(place.name) jigsaw piece.")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.green)
+                Spacer()
+            }
+            .padding(10)
+            .background(Color.green.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private var promptSection: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Take Photo Prompt")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                Text(place.photoPrompt)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.gray.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            if isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .padding(14)
+                    .background(Color.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    Group {
+                        if isCheckingMetadata {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "photo.badge.checkmark")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(isCheckingMetadata)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: EXIF Verification
+    private func verifyAndSavePhoto(from item: PhotosPickerItem) {
+        isCheckingMetadata = true
+        verificationMessage = nil
+        Task {
+            defer {
+                isCheckingMetadata = false
+                selectedPhotoItem = nil
+            }
+            guard let rawData = try? await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: rawData) else {
+                isVerificationError = true
+                verificationMessage = "Could not load photo data. Please try another photo."
+                return
+            }
+            guard let photoCoordinate = PhotoMetadataExtractor.extractCoordinate(from: rawData) else {
+                isVerificationError = true
+                verificationMessage = "Rejected: No GPS location metadata found in this photo. Enable Camera Location Services on your iPhone."
+                return
+            }
+            let photoLoc = CLLocation(latitude: photoCoordinate.latitude, longitude: photoCoordinate.longitude)
+            let placeLoc = CLLocation(latitude: place.coordinate.latitude, longitude: place.coordinate.longitude)
+            let distanceMeters = Int(photoLoc.distance(from: placeLoc))
+            guard Double(distanceMeters) <= maxAllowedDistanceMeters else {
+                isVerificationError = true
+                verificationMessage = "Rejected: Photo metadata shows it was taken \(distanceMeters)m away from \(place.name) (must be within 500m)."
+                return
+            }
+            isVerificationError = false
+            verificationMessage = "Verified! Photo metadata confirmed \(distanceMeters)m from \(place.name)."
+            let memory = CapturedMemory(
+                placeName: place.name,
+                infoType: place.infoType,
+                coordinate: photoCoordinate,
+                image: uiImage,
+                dateTaken: PhotoMetadataExtractor.extractDate(from: rawData) ?? Date(),
+                rawImageData: rawData
+            )
+            onSaveMemory(memory)
+            dismiss()
+        }
+    }
+}
+
+// MARK: - 6. SUPPORTING TYPES (Delete if already defined in another file)
+
+
+// MARK: - 7. PREVIEW
+
+#Preview {
+    RecommendationTab()
+        .environment(TripStore())
+}
