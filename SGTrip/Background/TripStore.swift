@@ -190,7 +190,6 @@ class TripStore {
             )
 
             memories.insert(newMemory, at: 0)
-            hasLoadedInitialState = true
             try saveMemoriesMetadata()
             storageErrorMessage = nil
         } catch {

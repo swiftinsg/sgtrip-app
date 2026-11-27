@@ -261,7 +261,7 @@ struct ConfettiRainView: UIViewRepresentable {
         private func confettiPieceImage(color: UIColor) -> UIImage? {
             let size = CGSize(width: 14, height: 8)
             let renderer = UIGraphicsImageRenderer(size: size)
-            return renderer.image { ctx in
+            return renderer.image { _ in
                 color.setFill()
                 UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 2).fill()
             }
@@ -349,7 +349,6 @@ ConfettiRainView()
 .background(Color(.systemGroupedBackground))
 .navigationTitle("SG Puzzles")
 .navigationBarTitleDisplayMode(.inline)
-.statusBarHidden(true)
 .onChange(of: selectedRegion) { _, newRegion in
 showEmptyRegionNoticeIfNeeded(for: newRegion)
 checkAndTriggerConfetti(for: newRegion)
@@ -424,7 +423,7 @@ noticeMessage = nil
 return
 }
 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-noticeMessage = "visit places to unlock more puzzles"
+noticeMessage = "Visit places to unlock more puzzles"
 }
 Task {
 try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -451,7 +450,7 @@ let regionPlaces = region.placeNames
 let unlocked = regionPlaces.filter { unlockedPlaceSet.contains($0) }.count
 let total = regionPlaces.count
 let isDone = total > 0 && unlocked == total
-let progressText = String(unlocked) + "/" + String(total)
+let progressText = "(unlocked)/(total)"
 Button {
 withAnimation(.easeInOut(duration: 0.25)) {
 selectedRegion = region
@@ -520,8 +519,8 @@ PHAssetChangeRequest.creationRequestForAsset(from: wallpaper)
 }) { success, error in
 DispatchQueue.main.async {
 if success {
-alertTitle = region.rawValue + " Wallpaper Downloaded!"
-alertMessage = "Your full-screen " + region.rawValue + " Singapore wallpaper has been saved to Photos."
+alertTitle = "(region.rawValue) Wallpaper Downloaded!"
+alertMessage = "Your full-screen (region.rawValue) Singapore wallpaper has been saved to Photos."
 } else {
 alertTitle = "Save Failed"
 alertMessage = error?.localizedDescription ?? "Unable to save wallpaper to your Photo Library."
@@ -586,7 +585,7 @@ boardHeight: geo.size.height
 if isComplete {
 Button(action: onDownload) {
 Label(
-"Download " + region.rawValue + " Wallpaper",
+"Download (region.rawValue) Wallpaper",
 systemImage: "arrow.down.to.line.circle.fill"
 )
 .font(.headline)
